@@ -1,0 +1,102 @@
+================================================== no_stacktrace
+exit_code: 103
+--------------------------------------------------
+1()
+--------------------------------------------------
+--------------------------------------------------
+stacktrace/no_stacktrace.ash:1:1: can't call 'int' as a function
+================================================== stacktrace
+exit_code: 103
+--------------------------------------------------
+fn first() {
+    second()
+}
+
+fn second() {
+    third()
+}
+
+fn third() {
+    1()
+}
+
+first()
+--------------------------------------------------
+--------------------------------------------------
+stacktrace/stacktrace.ash:10:5: in 'third': can't call 'int' as a function
+Stacktrace:
+  stacktrace/stacktrace.ash:6:5: in 'second'
+  stacktrace/stacktrace.ash:2:5: in 'first'
+  stacktrace/stacktrace.ash:13:1: in '<root>'
+================================================== stacktrace_builtin
+exit_code: 103
+--------------------------------------------------
+fn first() {
+    second()
+}
+
+fn second() {
+    third()
+}
+
+fn third() {
+    print(1, 2)
+}
+
+first()
+--------------------------------------------------
+--------------------------------------------------
+stacktrace/stacktrace_builtin.ash:10:5: in 'third': `print` only takes 1 argument (got 2)
+Stacktrace:
+  stacktrace/stacktrace_builtin.ash:6:5: in 'second'
+  stacktrace/stacktrace_builtin.ash:2:5: in 'first'
+  stacktrace/stacktrace_builtin.ash:13:1: in '<root>'
+================================================== stacktrace_anon_function
+exit_code: 103
+--------------------------------------------------
+fn first() {
+    second()
+}
+
+second := fn () {
+    third()
+}
+
+fn third() {
+    print(1, 2)
+}
+
+first()
+--------------------------------------------------
+--------------------------------------------------
+stacktrace/stacktrace_anon_function.ash:10:5: in 'third': `print` only takes 1 argument (got 2)
+Stacktrace:
+  stacktrace/stacktrace_anon_function.ash:6:5: in '<unnamed function>'
+  stacktrace/stacktrace_anon_function.ash:2:5: in 'first'
+  stacktrace/stacktrace_anon_function.ash:13:1: in '<root>'
+================================================== stacktrace_function_variable
+exit_code: 103
+--------------------------------------------------
+fn first() {
+    second()
+}
+
+fn f() {
+    third()
+}
+
+second := f
+
+fn third() {
+    print(1, 2)
+}
+
+first()
+--------------------------------------------------
+--------------------------------------------------
+stacktrace/stacktrace_function_variable.ash:12:5: in 'third': `print` only takes 1 argument (got 2)
+Stacktrace:
+  stacktrace/stacktrace_function_variable.ash:6:5: in 'f'
+  stacktrace/stacktrace_function_variable.ash:2:5: in 'first'
+  stacktrace/stacktrace_function_variable.ash:15:1: in '<root>'
+==================================================

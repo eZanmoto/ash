@@ -1,0 +1,403 @@
+// Copyright 2025 Sean Kelleher. All rights reserved.
+// Use of this source code is governed by an MIT
+// licence that can be found in the LICENCE file.
+
+use crate::ast::*;
+use crate::lexer::InterpSlot;
+use crate::lexer::LexError;
+use crate::lexer::Location as LexLocation;
+use crate::lexer::Token;
+
+grammar;
+
+pub Prog: Prog = {
+    <stmts:Stmt*> => Prog::Body{stmts},
+}
+
+// We require that blocks end with `;` to simplify the rules for omitting
+// semicolons. By adding this change to the grammar, we can use the same rules
+// for handling "statement"-based blocks (control flow) and "expression"-based
+// blocks (objects).
+pub Stmt: Stmt = {
+    <stmt:RawStmt> "stmt_end" => stmt,
+}
+
+pub RawStmt: Stmt = {
+    // We require at least one statement in a block to avoid ambiguity between
+    // empty blocks (`{}`) and empty objects (`{};`). Note that an empty object
+    // must be followed by a `stmt_end` when it's used as an expression
+    // statement; however, because LALRPOP provides one lookahead token (LR(1)),
+    // the decision of whether the production is an empty block or an empty
+    // object needs to be made when the closing brace is encountered - the token
+    // after can't be checked. We require at least one statement in a block as a
+    // simple solution, rather than reworking the grammar to allow empty blocks.
+    "{" <block:Stmt+> "}" =>
+        Stmt::Block{block},
+
+    <expr:Expr> =>
+        Stmt::Expr{expr},
+
+    <lhs:Expr> ":=" <rhs:Expr> =>
+        Stmt::Declare{lhs, rhs},
+    <lhs:Expr> "=" <rhs:Expr> =>
+        Stmt::Assign{lhs, rhs},
+
+    <lhs:Expr> <op_loc:@L> "+=" <rhs:Expr> =>
+        Stmt::OpAssign{lhs, op: BinaryOp::Sum, op_loc, rhs},
+    <lhs:Expr> <op_loc:@L> "-=" <rhs:Expr> =>
+        Stmt::OpAssign{lhs, op: BinaryOp::Sub, op_loc, rhs},
+    <lhs:Expr> <op_loc:@L> "*=" <rhs:Expr> =>
+        Stmt::OpAssign{lhs, op: BinaryOp::Mul, op_loc, rhs},
+    <lhs:Expr> <op_loc:@L> "/=" <rhs:Expr> =>
+        Stmt::OpAssign{lhs, op: BinaryOp::Div, op_loc, rhs},
+    <lhs:Expr> <op_loc:@L> "%=" <rhs:Expr> =>
+        Stmt::OpAssign{lhs, op: BinaryOp::Mod, op_loc, rhs},
+
+    <stmt:IfStmt> => {
+        let (branches, else_stmts) = stmt;
+
+        Stmt::If{branches, else_stmts}
+    },
+
+    "while" <cond:Expr> <stmts:Block> =>
+        Stmt::While{cond, stmts},
+    "for" <lhs:Expr> "in" <iter:Expr> <stmts:Block> =>
+        Stmt::For{lhs, iter, stmts},
+    <loc:@L> "break" =>
+        Stmt::Break{loc},
+    <loc:@L> "continue" =>
+        Stmt::Continue{loc},
+
+    "fn" <loc:@L> <name:Ident> "(" <raw_args:ParamList> ")" <stmts:Block> => {
+        let (args, collect_args) = raw_args;
+
+        Stmt::Func{name: (name, loc), args, collect_args, stmts}
+    },
+    <loc:@L> "return" <expr:Expr> =>
+        Stmt::Return{loc, expr},
+}
+
+pub ParamList: (Vec<Expr>, bool) = {
+    <mut values:(<Expr> ",")*> <last:(<".."?> <Expr>)?> => {
+        let mut collect = false;
+        if let Some((maybe_collect, v)) = last {
+            values.push(v);
+            collect = maybe_collect.is_some();
+        }
+
+        (values, collect)
+    }
+}
+
+pub Block: Block = {
+    "{" <stmts:Stmt*> "}" => stmts,
+}
+
+pub IfStmt: (Vec<Branch>, Option<Block>) = {
+    "if" <cond:Expr> <if_stmts:Block> => {
+        (vec![Branch{cond, stmts: if_stmts}], None)
+    },
+
+    "if" <cond:Expr> <if_stmts:Block> "else" <else_stmts:Block> => {
+        (vec![Branch{cond, stmts: if_stmts}], Some(else_stmts))
+    },
+
+    "if" <cond:Expr> <if_stmts:Block> "else" <if_else_stmts:IfStmt> => {
+        let (mut branches, else_stmts) = if_else_stmts;
+        branches.insert(0, Branch{cond, stmts: if_stmts});
+
+        (branches, else_stmts)
+    },
+}
+
+pub Expr: Expr = {
+    <loc:@L> <expr:ExprPrecedence1> => (expr, loc),
+}
+
+ExprTier<Op, NextTier>: RawExpr = {
+    <l_loc:@L> <l:ExprTier<Op, NextTier>>
+    <op_loc:@L> <op:Op>
+    <r_loc:@L> <r:NextTier> =>
+        RawExpr::BinaryOp{
+            op,
+            op_loc,
+            lhs: Box::new((l, l_loc)),
+            rhs: Box::new((r, r_loc)),
+        },
+
+    NextTier
+}
+
+// `ExprPrecedence1` defines the most loosely binding expressions. Each
+// increasing precedence indicates a tighter binding.
+pub ExprPrecedence1: RawExpr = {
+    // `Expr` can only be used on the LHS of this production because the
+    // production is being defined in the `ExprPrecedence1` block. If the
+    // production were defined at another precedence level then the LHS would
+    // need to use `ExprPrecedenceN`, where `N` is the precedence level it's
+    // being defined in; using `Expr` in such a case would result in an
+    // ambiguity in the grammar, unless a prefix token were used to resolve the
+    // ambiguity (such as the case with `"(" <Expr> ")"`, which isn't ambiguous.
+    //
+    // We also need to use `Expr` on the LHS of this production so that it has
+    // the same prefix as the productions in `ExprList`, i.e. `<Expr> ".."`. If
+    // this production had a different LHS, like `ExprPrecedence1`, then this
+    // difference would result in an ambiguity, because the generated parser
+    // would need to choose a production when `..` is encountered, rather than
+    // being able to check the element after the `..`.
+    <start:Expr> ".." <el:@L> <end:ExprPrecedence2> =>
+        RawExpr::Range{start: Box::new(start), end: Box::new((end, el))},
+
+    ExprPrecedence2
+}
+
+pub ExprPrecedence2 = ExprTier<ExprOp2, ExprPrecedence3>;
+
+pub ExprOp2: BinaryOp = {
+    "&&" => BinaryOp::And,
+    "||" => BinaryOp::Or,
+};
+
+pub ExprPrecedence3 = ExprTier<ExprOp3, ExprPrecedence4>;
+
+pub ExprOp3: BinaryOp = {
+    "+" => BinaryOp::Sum,
+    "-" => BinaryOp::Sub,
+};
+
+pub ExprPrecedence4 = ExprTier<ExprOp4, ExprPrecedence5>;
+
+pub ExprOp4: BinaryOp = {
+    "*" => BinaryOp::Mul,
+    "/" => BinaryOp::Div,
+    "%" => BinaryOp::Mod,
+
+    "==" => BinaryOp::Eq,
+    "!=" => BinaryOp::Ne,
+    ">" => BinaryOp::Gt,
+    ">=" => BinaryOp::Gte,
+    "<" => BinaryOp::Lt,
+    "<=" => BinaryOp::Lte,
+
+    "===" => BinaryOp::RefEq,
+    "!==" => BinaryOp::RefNe,
+};
+
+pub ExprPrecedence5: RawExpr = {
+    <loc:@L> <expr:ExprPrecedence5> "(" <args:ArgList> ")" =>
+        RawExpr::Call{func: Box::new((expr, loc)), args},
+
+    <loc:@L> <expr:ExprPrecedence5> "[" <locat:Expr> "]" =>
+        RawExpr::Index{expr: Box::new((expr, loc)), location: Box::new(locat)},
+
+    <loc:@L> <expr:ExprPrecedence5> "[" <start:Expr?> ":" <end:Expr?> "]" =>
+        RawExpr::RangeIndex{
+            expr: Box::new((expr, loc)),
+            start: start.map(|v| Box::new(v)),
+            end: end.map(|v| Box::new(v)),
+        },
+
+    <loc:@L> <expr:ExprPrecedence5> "." <name:Ident> =>
+        RawExpr::Prop{expr: Box::new((expr, loc)), name, type_prop: false},
+
+    <loc:@L> <expr:ExprPrecedence5> "->" <name:Ident> =>
+        RawExpr::Prop{expr: Box::new((expr, loc)), name, type_prop: true},
+
+    ExprPrecedence6
+}
+
+// NOTE `ArgList` is functionally equivalent to `ExprList`, but doesn't allow
+// for the `collect` operator. TODO Consider combining the two productions.
+pub ArgList: Vec<ListItem> = {
+    <items:ReverseArgList> => {
+        items
+            .into_iter()
+            .rev()
+            .collect()
+    },
+}
+
+pub ReverseArgList: Vec<ListItem> = {
+    () => {
+        vec![]
+    },
+
+    <expr:Expr> <spread:".."?> => {
+        vec![ListItem{expr, is_spread: spread.is_some()}]
+    },
+
+    <expr:Expr> <spread:".."?> "," <mut tail:ReverseArgList> => {
+        let is_spread = spread.is_some();
+        tail.push(ListItem{expr, is_spread});
+
+        tail
+    },
+}
+
+pub ExprPrecedence6: RawExpr = {
+    "null" => RawExpr::Null,
+    "true" => RawExpr::Bool{b: true},
+    "false" => RawExpr::Bool{b: false},
+
+    <name:Ident> => RawExpr::Var{name},
+    <n:IntLiteral> => RawExpr::Int{n},
+    "-" <n:IntLiteral> => RawExpr::Int{n: -n},
+    <s:StrLiteral> => RawExpr::Str{s, interpolation_slots: None},
+    <is:InterpStrLiteral> =>
+        RawExpr::Str{s: is.0, interpolation_slots: Some(is.1)},
+
+    "(" <expr:ExprPrecedence1> ")" => expr,
+
+    "[" <raw_items:ExprList> "]" => {
+        let (items, collect) = raw_items;
+
+        RawExpr::List{items, collect}
+    },
+
+    "{" <props:PropList> "}" => RawExpr::Object{props},
+
+    "fn" "(" <raw_args:ParamList> ")" <stmts:Block> => {
+        let (args, collect_args) = raw_args;
+
+        RawExpr::Func{args, collect_args, stmts}
+    },
+}
+
+pub ExprList: (Vec<ListItem>, bool) = {
+    <raw_items:ReverseExprList> => {
+        let (items, collect) = raw_items;
+
+        let items =
+            items
+                .into_iter()
+                .rev()
+                .collect();
+
+        (items, collect)
+    },
+}
+
+pub ReverseExprList: (Vec<ListItem>, bool) = {
+    () => {
+        (vec![], false)
+    },
+
+    <collect:".."?> <expr:Expr> <spread:".."?> => {
+        let tail = vec![ListItem{expr, is_spread: spread.is_some()}];
+
+        (tail, collect.is_some())
+    },
+
+    <expr:Expr> <spread:".."?> "," <tail:ReverseExprList> => {
+        let is_spread = spread.is_some();
+        let (mut tail_items, collect) = tail;
+        tail_items.push(ListItem{expr, is_spread});
+
+        (tail_items, collect)
+    },
+}
+
+pub PropList: Vec<PropItem> = CommaSepList<PropItem>;
+
+CommaSepList<T>: Vec<T> = {
+    <mut values:(<T> ",")*> <last:T?> => {
+        if let Some(v) = last {
+            values.push(v);
+        }
+
+        values
+    }
+}
+
+pub PropItem: PropItem = {
+    <name:Expr> ":" <value:Expr> =>
+        PropItem::Pair{name, value},
+
+    <collect:".."?> <expr:Expr> <spread:".."?> =>
+        PropItem::Single{
+            expr,
+            is_spread: spread.is_some(),
+            collect: collect.is_some(),
+        },
+}
+
+Ident: String = {
+    <s:"identifier"> => s,
+};
+
+IntLiteral: i64 = {
+    <n:"int_literal"> => n,
+};
+
+StrLiteral: String = {
+    <s:"str_literal"> => s,
+};
+
+InterpStrLiteral: (String, Vec<InterpSlot>) = {
+    <s:"interp_str_literal"> => s,
+};
+
+extern {
+    type Location = LexLocation;
+    type Error = LexError;
+
+    enum Token {
+        "identifier" => Token::Ident(<String>),
+        "int_literal" => Token::IntLiteral(<i64>),
+        "str_literal" => Token::StrLiteral(<String>),
+        "interp_str_literal" =>
+            Token::InterpStrLiteral(<String>, <Vec<InterpSlot>>),
+
+        "stmt_end" => Token::StmtEnd,
+
+        "break" => Token::Break,
+        "continue" => Token::Continue,
+        "else" => Token::Else,
+        "false" => Token::False,
+        "fn" => Token::Fn,
+        "for" => Token::For,
+        "if" => Token::If,
+        "in" => Token::In,
+        "null" => Token::Null,
+        "return" => Token::Return,
+        "true" => Token::True,
+        "while" => Token::While,
+
+        "}" => Token::BraceClose,
+        "{" => Token::BraceOpen,
+        "]" => Token::BracketClose,
+        "[" => Token::BracketOpen,
+        ":" => Token::Colon,
+        "," => Token::Comma,
+        "/" => Token::Div,
+        "." => Token::Dot,
+        "=" => Token::Equals,
+        ">" => Token::GreaterThan,
+        "<" => Token::LessThan,
+        "%" => Token::Mod,
+        "*" => Token::Mul,
+        ")" => Token::ParenClose,
+        "(" => Token::ParenOpen,
+        "-" => Token::Sub,
+        "+" => Token::Sum,
+
+        "&&" => Token::AmpAmp,
+        "!=" => Token::BangEquals,
+        "->" => Token::DashGreaterThan,
+        "/=" => Token::DivEquals,
+        ".." => Token::DotDot,
+        "==" => Token::EqualsEquals,
+        ">=" => Token::GreaterThanEquals,
+        "<=" => Token::LessThanEquals,
+        "%=" => Token::ModEquals,
+        "*=" => Token::MulEquals,
+        "||" => Token::PipePipe,
+        "-=" => Token::SubEquals,
+        "+=" => Token::SumEquals,
+
+        ":=" => Token::ColonEquals,
+
+        "===" => Token::EqualsEqualsEquals,
+        "!==" => Token::BangEqualsEquals,
+    }
+}

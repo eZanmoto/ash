@@ -1,0 +1,25 @@
+[package]
+authors = ["Sean Kelleher <ezanmoto@gmail.com>"]
+categories = [
+    "development-tools"
+]
+description = "A shell-scripting programming language"
+keywords = ["programming"]
+license = "MIT"
+name = "ash"
+readme = "README.md"
+repository = "https://github.com/ezanmoto/ash"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+indoc = "=1.0.2"
+lalrpop = "=0.22.0"
+
+[dependencies]
+lalrpop-util = "=0.22.0"
+snafu = "=0.6.9"
+
+[dev-dependencies]
+assert_cmd = "=1.0.1"
+assert_matches = "=1.5.0"
