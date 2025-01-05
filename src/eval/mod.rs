@@ -386,6 +386,8 @@ fn validate_args(args: &[Expr]) -> Result<()> {
                 return new_invalid_bind_error("an integer literal"),
             RawExpr::Str{..} =>
                 return new_invalid_bind_error("a string literal"),
+            RawExpr::UnaryOp{..} =>
+                return new_invalid_bind_error("a unary operation"),
             RawExpr::BinaryOp{..} =>
                 return new_invalid_bind_error("a binary operation"),
             RawExpr::Range{..} =>
@@ -508,6 +510,16 @@ fn eval_expr(
                 };
 
             Ok(v)
+        },
+
+        RawExpr::UnaryOp{op, op_loc, expr} => {
+            let value = eval_expr(context, scopes, expr)
+                .context(EvalUnaryOpFailed)?;
+
+            let v = apply_unary_operation(op, op_loc, &value.v)
+                .context(ApplyUnaryOpFailed)?;
+
+            Ok(value::new_val_ref_with_no_source(v))
         },
 
         RawExpr::BinaryOp{op, op_loc, lhs, rhs} => {
@@ -855,6 +867,40 @@ enum CallBinding {
 }
 
 #[allow(clippy::too_many_lines)]
+fn apply_unary_operation(
+    op: &UnaryOp,
+    op_loc: &Location,
+    value: &Value,
+)
+    -> Result<Value>
+{
+    let (line, col) = op_loc;
+    let new_invalid_op_type = || {
+        Error::AtLoc{
+            source: Box::new(Error::InvalidUnaryOpType{
+                op: op.clone(),
+                value: value.clone(),
+            }),
+            line: *line,
+            col: *col,
+        }
+    };
+
+    match op {
+        UnaryOp::Not => {
+            match value {
+                Value::Bool(b) => {
+                    Ok(Value::Bool(!b))
+                },
+                _ => {
+                    Err(new_invalid_op_type())
+                },
+            }
+        },
+    }
+}
+
+#[allow(clippy::too_many_lines)]
 fn apply_binary_operation(
     op: &BinaryOp,
     op_loc: &Location,
@@ -866,7 +912,7 @@ fn apply_binary_operation(
     let (line, col) = op_loc;
     let new_invalid_op_types = || {
         Error::AtLoc{
-            source: Box::new(Error::InvalidOpTypes{
+            source: Box::new(Error::InvalidBinOpTypes{
                 op: op.clone(),
                 lhs: lhs.clone(),
                 rhs: rhs.clone(),

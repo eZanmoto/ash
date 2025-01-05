@@ -49,6 +49,12 @@ Integers can be formatted using underscore to help reading:
 Operations
 ----------
 
+### Booleans
+
+```
+print(!true) # false
+```
+
 ### Integers
 
 ```

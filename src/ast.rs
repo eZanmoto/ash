@@ -63,6 +63,12 @@ pub enum RawExpr {
 
     Var{name: String},
 
+    UnaryOp{
+        op: UnaryOp,
+        op_loc: Location,
+        expr: Box<Expr>,
+    },
+
     BinaryOp{
         op: BinaryOp,
         op_loc: Location,
@@ -84,6 +90,11 @@ pub enum RawExpr {
 
     Func{args: Vec<Expr>, collect_args: bool, stmts: Block},
     Call{func: Box<Expr>, args: Vec<ListItem>},
+}
+
+#[derive(Clone, Debug)]
+pub enum UnaryOp {
+    Not,
 }
 
 #[derive(Clone, Debug)]

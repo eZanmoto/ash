@@ -232,6 +232,7 @@ fn render_token(t: Token) -> String {
         Token::True => "`true`".to_string(),
         Token::While => "`while`".to_string(),
 
+        Token::Bang => "!".to_string(),
         Token::BraceClose => "}".to_string(),
         Token::BraceOpen => "{".to_string(),
         Token::BracketClose => "]".to_string(),

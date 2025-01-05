@@ -7,6 +7,7 @@ use std::string::FromUtf8Error;
 
 use snafu::Snafu;
 
+use crate::ast::UnaryOp;
 use crate::ast::BinaryOp;
 use crate::eval::Value;
 
@@ -55,15 +56,21 @@ pub enum Error {
     #[snafu(display("expected at least {} arguments, got {}", minimum, got))]
     TooFewArgs{minimum: usize, got: usize},
     #[snafu(display(
+        "can't apply '{}' to '{}'",
+        unary_op_symbol(op),
+        render_type(value),
+    ))]
+    InvalidUnaryOpType{op: UnaryOp, value: Value},
+    #[snafu(display(
         "can't apply '{}' to '{}' and '{}'",
-        op_symbol(op),
+        bin_op_symbol(op),
         render_type(lhs),
         render_type(rhs),
     ))]
-    InvalidOpTypes{op: BinaryOp, lhs: Value, rhs: Value},
+    InvalidBinOpTypes{op: BinaryOp, lhs: Value, rhs: Value},
     #[snafu(display(
         "can't apply '{}' to '{}' and '{}'{}",
-        op_symbol(op),
+        bin_op_symbol(op),
         lhs_type,
         rhs_type,
         msg,
@@ -213,7 +220,7 @@ pub enum Error {
     #[snafu(display(
         "'{} {} {}' caused an integer overflow",
         lhs,
-        op_symbol(op),
+        bin_op_symbol(op),
         rhs,
     ))]
     IntOverflow{op: BinaryOp, lhs: i64, rhs: i64},
@@ -353,6 +360,14 @@ pub enum Error {
         source: Box<Error>,
     },
     EvalStmtFailed{
+        #[snafu(source(from(Error, Box::new)))]
+        source: Box<Error>,
+    },
+    EvalUnaryOpFailed{
+        #[snafu(source(from(Error, Box::new)))]
+        source: Box<Error>,
+    },
+    ApplyUnaryOpFailed{
         #[snafu(source(from(Error, Box::new)))]
         source: Box<Error>,
     },
@@ -521,7 +536,16 @@ pub fn render_type(v: &Value) -> String {
     s.to_string()
 }
 
-fn op_symbol(op: &BinaryOp) -> String {
+fn unary_op_symbol(op: &UnaryOp) -> String {
+    let s =
+        match op {
+            UnaryOp::Not => "!",
+        };
+
+    s.to_string()
+}
+
+fn bin_op_symbol(op: &BinaryOp) -> String {
     let s =
         match op {
             BinaryOp::Sum => "+",

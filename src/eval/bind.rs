@@ -278,6 +278,8 @@ pub fn bind_next(
             new_invalid_bind_error("an integer literal"),
         RawExpr::Str{..} =>
             new_invalid_bind_error("a string literal"),
+        RawExpr::UnaryOp{..} =>
+            new_invalid_bind_error("a unary operation"),
         RawExpr::BinaryOp{..} =>
             new_invalid_bind_error("a binary operation"),
         RawExpr::Range{..} =>

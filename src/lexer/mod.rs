@@ -30,6 +30,7 @@ pub enum Token {
     True,
     While,
 
+    Bang,
     BraceClose,
     BraceOpen,
     BracketClose,
@@ -511,6 +512,7 @@ impl Iterator for Lexer<'_> {
 
 fn match_single_symbol_token(c: char) -> Option<Token> {
     match c {
+        '!' => Some(Token::Bang),
         '}' => Some(Token::BraceClose),
         '{' => Some(Token::BraceOpen),
         ']' => Some(Token::BracketClose),

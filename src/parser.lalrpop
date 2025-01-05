@@ -148,6 +148,13 @@ pub ExprPrecedence1: RawExpr = {
     <start:Expr> ".." <el:@L> <end:ExprPrecedence2> =>
         RawExpr::Range{start: Box::new(start), end: Box::new((end, el))},
 
+    <op_loc:@L> "!" <expr:ExprPrecedence2> =>
+        RawExpr::UnaryOp{
+            op: UnaryOp::Not,
+            op_loc,
+            expr: Box::new((expr, op_loc)),
+        },
+
     ExprPrecedence2
 }
 
@@ -363,6 +370,7 @@ extern {
         "true" => Token::True,
         "while" => Token::While,
 
+        "!" => Token::Bang,
         "}" => Token::BraceClose,
         "{" => Token::BraceOpen,
         "]" => Token::BracketClose,
