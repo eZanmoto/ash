@@ -152,6 +152,7 @@ fn run(cur_rel_script_path: &Path) -> Result<(), Error> {
 }
 
 #[derive(Debug, Snafu)]
+#[snafu(context(suffix(false)))]
 #[allow(clippy::enum_variant_names)]
 enum Error {
     GetCurrentDirFailed{source: IoError},

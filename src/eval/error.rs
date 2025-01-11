@@ -5,7 +5,7 @@
 use std::num::TryFromIntError;
 use std::string::FromUtf8Error;
 
-use snafu::Snafu;
+use snafu::prelude::*;
 
 use crate::ast::UnaryOp;
 use crate::ast::BinaryOp;
@@ -20,7 +20,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 // throughout the codebase for little benefit, so we take the current approach
 // for now.
 #[derive(Clone, Debug, Snafu)]
-#[snafu(visibility = "pub")]
+#[snafu(visibility(pub), context(suffix(false)))]
 pub enum Error {
     // TODO Consider adding a rendered version of the source expression to
     // highlight what the interpreter attempted to evaluate.
