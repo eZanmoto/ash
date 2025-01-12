@@ -68,19 +68,6 @@ pub enum Error {
         render_type(rhs),
     ))]
     InvalidBinOpTypes{op: BinaryOp, lhs: Value, rhs: Value},
-    #[snafu(display(
-        "can't apply '{}' to '{}' and '{}'{}",
-        bin_op_symbol(op),
-        lhs_type,
-        rhs_type,
-        msg,
-    ))]
-    InvalidEqOpTypes{
-        op: BinaryOp,
-        lhs_type: String,
-        rhs_type: String,
-        msg: String,
-    },
     #[snafu(display("'break' can't be used outside of a loop"))]
     BreakOutsideLoop,
     #[snafu(display("'continue' can't be used outside of a loop"))]
@@ -97,10 +84,6 @@ pub enum Error {
     ValueNotRangeIndexAssignable,
     #[snafu(display("type properties cannot be assigned to"))]
     AssignToTypeProp,
-    #[snafu(display("index '{}' is outside the string bounds", index))]
-    OutOfStringBounds{index: usize},
-    #[snafu(display("index '{}' is outside the list bounds", index))]
-    OutOfListBounds{index: usize},
     #[snafu(display("range [{}:{}] is outside the string bounds", start, end))]
     RangeOutOfStringBounds{start: usize, end: usize},
     // TODO Update usage of `RangeOutOfListBounds` to use more specific
@@ -185,8 +168,6 @@ pub enum Error {
         range_len,
     ))]
     RangeIndexItemMismatch{range_len: usize, rhs_len: usize},
-    #[snafu(display("object doesn't contain property '{}'", name))]
-    PropNotFound{name: String},
     #[snafu(display(
         "there is no type function '{}' for '{}'",
         name,
@@ -217,13 +198,6 @@ pub enum Error {
     OpOnObjectDestructure,
     #[snafu(display("cannot perform this operation on an list destructure"))]
     OpOnListDestructure,
-    #[snafu(display(
-        "'{} {} {}' caused an integer overflow",
-        lhs,
-        bin_op_symbol(op),
-        rhs,
-    ))]
-    IntOverflow{op: BinaryOp, lhs: i64, rhs: i64},
     #[snafu(display("'{}' is already declared at [{}:{}]", name, line, col))]
     DupParamName{name: String, line: usize, col: usize},
     #[snafu(display("can't use spread operator in parameter list"))]
@@ -233,6 +207,8 @@ pub enum Error {
 
     #[snafu(display("{}", msg))]
     BuiltinFuncErr{msg: String},
+    #[snafu(display("{}", msg))]
+    Runtime{msg: String},
 
     #[snafu(display("dev error: {}", msg))]
     Dev{msg: String},
@@ -484,6 +460,10 @@ pub enum Error {
         func_name: Option<String>,
         call_loc: (usize, usize),
     },
+    EvalCatchAsBoolFailed{
+        #[snafu(source(from(Error, Box::new)))]
+        source: Box<Error>,
+    },
     EvalExprFailed{
         #[snafu(source(from(Error, Box::new)))]
         source: Box<Error>,
@@ -545,7 +525,7 @@ fn unary_op_symbol(op: &UnaryOp) -> String {
     s.to_string()
 }
 
-fn bin_op_symbol(op: &BinaryOp) -> String {
+pub fn bin_op_symbol(op: &BinaryOp) -> String {
     let s =
         match op {
             BinaryOp::Sum => "+",

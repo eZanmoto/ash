@@ -1,0 +1,87 @@
+================================================== prop_not_found
+xs := {"a": 1}
+[v, ok] := ? xs["a"]
+if ok {
+    print(v)
+} else {
+    print("nothing")
+}
+
+[v, ok] = ? xs["b"]
+if ok {
+    print(v)
+} else {
+    print("nothing")
+}
+--------------------------------------------------
+1
+nothing
+================================================== shorthand_prop_not_found
+person := {"name": {}}
+[fname, ok] := ? person.name.first
+if ok {
+    print(fname)
+} else {
+    print("nothing")
+}
+
+person.name.first := "Jo"
+[fname, ok] = ? person.name.first
+if ok {
+    print(fname)
+} else {
+    print("nothing")
+}
+--------------------------------------------------
+nothing
+Jo
+================================================== eq_type_mismatch
+a := 1
+b := "2"
+
+[is_eq, ok] := ? a == b
+if ok {
+    if is_eq {
+        print("equal")
+    } else {
+        print("not equal (same type)")
+    }
+} else {
+    print("not equal (different types)")
+}
+--------------------------------------------------
+not equal (different types)
+================================================== out_of_str_bounds
+xs := "abc"
+
+[c, ok] := ? xs[5]
+if ok {
+    print(c)
+} else {
+    print("nothing")
+}
+--------------------------------------------------
+nothing
+================================================== out_of_list_bounds
+xs := [1, 2, 3]
+
+[c, ok] := ? xs[5]
+if ok {
+    print(c)
+} else {
+    print("nothing")
+}
+--------------------------------------------------
+nothing
+================================================== int_overflow
+x := 9_223_372_036_854_775_807
+
+[v, ok] := ? x + 1
+if ok {
+    print(c)
+} else {
+    print("overflow")
+}
+--------------------------------------------------
+overflow
+==================================================

@@ -250,6 +250,7 @@ fn render_token(t: Token) -> String {
         Token::ParenClose => ")".to_string(),
         Token::ParenOpen => "(".to_string(),
         Token::StmtEnd => "stmt_end".to_string(),
+        Token::Question => "?".to_string(),
         Token::Sub => "-".to_string(),
         Token::Sum => "+".to_string(),
 
@@ -343,6 +344,7 @@ fn eval_err_to_stacktrace(path: &Path, func: Option<&str>, error: EvalError)
         EvalError::EvalCallFailed{source} |
         EvalError::EvalCallArgsFailed{source} |
         EvalError::EvalCallFuncFailed{source} |
+        EvalError::EvalCatchAsBoolFailed{source} |
         EvalError::EvalExprFailed{source} |
         EvalError::EvalPropFailed{source} |
         EvalError::InterpolateStringFailed{source} |

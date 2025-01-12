@@ -101,7 +101,9 @@ pub fn bind_next(
                         .context(EvalListIndexFailed)?;
 
                     if n >= lock_deref!(items).len() {
-                        return new_loc_err(Error::OutOfListBounds{index: n});
+                        return new_loc_err(Error::Runtime{msg: format!(
+                            "index '{n}' is outside the list bounds",
+                        )});
                     }
 
                     let lhs_val = &mut lock_deref!(items)[n as usize];
@@ -288,6 +290,8 @@ pub fn bind_next(
             new_invalid_bind_error("an anonymous function"),
         RawExpr::Call{..} =>
             new_invalid_bind_error("a function call"),
+        RawExpr::CatchAsBool{..} =>
+            new_invalid_bind_error("a boolean catch"),
     }
 }
 
@@ -605,8 +609,11 @@ fn bind_object_prop(
     let new_rhs =
         match lock_deref!(rhs).get(prop_name.0) {
             Some(v) => v.clone(),
-            None => return new_loc_err(Error::PropNotFound{
-                name: prop_name.0.to_string(),
+            None => return new_loc_err(Error::Runtime{
+                msg: format!(
+                    "object doesn't contain property '{}'",
+                    prop_name.0,
+                ),
             }),
         };
 

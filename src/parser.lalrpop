@@ -155,6 +155,9 @@ pub ExprPrecedence1: RawExpr = {
             expr: Box::new((expr, op_loc)),
         },
 
+    <loc:@L> "?" <expr:ExprPrecedence2> =>
+        RawExpr::CatchAsBool{expr: Box::new((expr, loc))},
+
     ExprPrecedence2
 }
 
@@ -386,6 +389,7 @@ extern {
         "*" => Token::Mul,
         ")" => Token::ParenClose,
         "(" => Token::ParenOpen,
+        "?" => Token::Question,
         "-" => Token::Sub,
         "+" => Token::Sum,
 

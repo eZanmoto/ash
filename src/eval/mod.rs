@@ -19,6 +19,7 @@ pub mod scope;
 #[macro_use]
 pub mod value;
 
+use snafu::Error as ErrorExt;
 use snafu::ResultExt;
 
 #[allow(clippy::wildcard_imports)]
@@ -396,6 +397,8 @@ fn validate_args(args: &[Expr]) -> Result<()> {
                 return new_invalid_bind_error("an anonymous function"),
             RawExpr::Call{..} =>
                 return new_invalid_bind_error("a function call"),
+            RawExpr::CatchAsBool{..} =>
+                return new_invalid_bind_error("a boolean catch"),
         }
     }
 
@@ -561,7 +564,11 @@ fn eval_expr(
                         match s.get(index) {
                             Some(v) => value::new_str(vec![*v]),
                             None => return new_loc_err(
-                                Error::OutOfStringBounds{index},
+                                #[allow(clippy::uninlined_format_args)]
+                                Error::Runtime{msg: format!(
+                                    "index '{}' is outside the string bounds",
+                                    index,
+                                )},
                             ),
                         };
 
@@ -576,7 +583,11 @@ fn eval_expr(
                         match lock_deref!(list).get(index) {
                             Some(v) => v.clone(),
                             None => return new_loc_err(
-                                Error::OutOfListBounds{index},
+                                #[allow(clippy::uninlined_format_args)]
+                                Error::Runtime{msg: format!(
+                                    "index '{}' is outside the list bounds",
+                                    index,
+                                )},
                             ),
                         };
 
@@ -596,7 +607,13 @@ fn eval_expr(
                                 value.v.clone()
                             },
                             None => {
-                                return new_loc_err(Error::PropNotFound{name});
+                                return new_loc_err(Error::Runtime{
+                                    #[allow(clippy::uninlined_format_args)]
+                                    msg: format!(
+                                        "object doesn't contain property '{}'",
+                                        name,
+                                    ),
+                                });
                             },
                         };
 
@@ -824,9 +841,9 @@ fn eval_expr(
                         name: name.clone(),
                     })
                 } else {
-                    new_loc_err(Error::PropNotFound{
-                        name: name.clone(),
-                    })
+                    new_loc_err(Error::Runtime{msg: format!(
+                        "object doesn't contain property '{name}'",
+                    )})
                 };
 
             v
@@ -850,6 +867,48 @@ fn eval_expr(
 
             Ok(v)
         },
+
+        RawExpr::CatchAsBool{expr} => {
+            let (maybe_value, maybe_err) =
+                match eval_expr(context, scopes, expr) {
+                    Ok(v) => {
+                        (v, value::new_bool(true))
+                    },
+                    Err(err) => {
+                        let e = root_error(&err);
+                        if let Error::Runtime{..} = e {
+                            (value::new_null(), value::new_bool(false))
+                        } else {
+                            return Err(Error::EvalCatchAsBoolFailed{
+                                source: Box::new(err),
+                            });
+                        }
+                    },
+                };
+
+            Ok(value::new_list(vec![maybe_value, maybe_err]))
+        },
+    }
+}
+
+// `root_error` recursively follows the `source` chain of `err` and returns the
+// deepest `Error` instance that was found.
+fn root_error(err: &Error) -> &Error {
+    let mut cur_err = err;
+    loop {
+        if let Some(e) = cur_err.source() {
+            // If the source is of our local error type (`Box<Error>`) then we
+            // keep walking. Otherwise it's likely to be a nested error (like
+            // `std::io::Error`), in which case we consider the current error
+            // to be the root.
+            if let Some(local_err) = e.downcast_ref::<Box<Error>>() {
+                cur_err = local_err;
+            } else {
+                return cur_err;
+            }
+        } else {
+            return cur_err;
+        }
     }
 }
 
@@ -923,11 +982,12 @@ fn apply_binary_operation(
     };
     let new_int_overflow = |lhs: &i64, rhs: &i64| {
         Error::AtLoc{
-            source: Box::new(Error::IntOverflow{
-                op: op.clone(),
-                lhs: *lhs,
-                rhs: *rhs,
-            }),
+            source: Box::new(Error::Runtime{msg: format!(
+                "'{} {} {}' caused an integer overflow",
+                lhs,
+                error::bin_op_symbol(op),
+                rhs,
+            )}),
             line: *line,
             col: *col,
         }
@@ -950,12 +1010,13 @@ fn apply_binary_operation(
                     }
 
                     Err(Error::AtLoc{
-                        source: Box::new(Error::InvalidEqOpTypes{
-                            op: op.clone(),
+                        source: Box::new(Error::Runtime{msg: format!(
+                            "can't apply '{}' to '{}' and '{}'{}",
+                            error::bin_op_symbol(op),
                             lhs_type,
                             rhs_type,
                             msg,
-                        }),
+                        )}),
                         line: *line,
                         col: *col,
                     })

@@ -46,6 +46,7 @@ pub enum Token {
     Mul,
     ParenClose,
     ParenOpen,
+    Question,
     StmtEnd,
     Sub,
     Sum,
@@ -528,6 +529,7 @@ fn match_single_symbol_token(c: char) -> Option<Token> {
         '*' => Some(Token::Mul),
         ')' => Some(Token::ParenClose),
         '(' => Some(Token::ParenOpen),
+        '?' => Some(Token::Question),
         '-' => Some(Token::Sub),
         '+' => Some(Token::Sum),
 

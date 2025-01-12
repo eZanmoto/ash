@@ -554,6 +554,47 @@ for iv in [1, 2, 3, 4] {
 }
 ```
 
+### Error handling
+
+#### Philosophy
+
+Ash is intended to be used for relatively simple scripts that glue different
+programs together, in a similar vein as Bash and other shell scripting
+languages. The expectation is that scripts written with Ash are going to be
+generally untested other than the happy path (i.e. the situation where no errors
+occur), and so the error philosophy of Ash is that any error is typically going
+to be unexpected, and will then "crash" the program.
+
+With this in mind, because Ash programs focus on the happy path, we also expect
+that we won't often actually handle errors, and generally not in a comprehensive
+way. As such, rather than a block-based mechanism for catching exceptions, Ash
+provides operators for handling exceptions in a lightweight way.
+
+### `?` (boolean catch)
+
+The `?` operator is placed before an expression, and gives a 2-element list as a
+result:
+
+```
+xs := {"a": 1}
+[v, ok] := ? xs["b"]
+if !ok {
+    v = "nothing"
+}
+print(v) # nothing
+```
+
+If the expression evaluates to an exception, then the value given by `?` will be
+`[null, false]`. Otherwise, if the expression doesn't evaluate to an exception,
+then the value of the expression will be given as the first element of the list,
+and the second value will contain `true`, i.e. `[v, true]`.
+
+### Language errors
+
+Not all exceptions can be caught. Attempting to do something that the language
+doesn't allow, like trying to `break` outside of a loop, will result in a
+"language error", which can't be caught.
+
 Functions
 ---------
 
