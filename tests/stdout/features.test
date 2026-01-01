@@ -41,6 +41,7 @@ print(1 + 2 * 3 - 4)
 print("Hello," + " world!")
 print([1, 2] + [3, 4])
 print(true && false)
+print(true || "short-circuit")
 print(1 < 2)
 print(3 >= 4)
 --------------------------------------------------
@@ -53,6 +54,7 @@ Hello, world!
     4,
 ]
 false
+true
 true
 false
 ================================================== ref_equality

@@ -16,6 +16,16 @@ if ok {
 --------------------------------------------------
 1
 nothing
+================================================== prop_not_found_and
+xs := {}
+[v, ok] := ? xs["b"]
+if ok && v != 0 {
+    print(v)
+} else {
+    print("nothing")
+}
+--------------------------------------------------
+nothing
 ================================================== shorthand_prop_not_found
 person := {"name": {}}
 [fname, ok] := ? person.name.first

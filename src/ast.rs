@@ -99,7 +99,7 @@ pub enum UnaryOp {
     Not,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BinaryOp {
     Sum,
     Sub,

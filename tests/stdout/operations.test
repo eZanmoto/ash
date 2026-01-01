@@ -133,6 +133,12 @@ print([
     true,
     true,
 ]
+================================================== boolean_short_circuiting
+print(false && "test")
+print(true || "test")
+--------------------------------------------------
+false
+true
 ================================================== equality
 print(1 == 1)
 print(1 == 2)

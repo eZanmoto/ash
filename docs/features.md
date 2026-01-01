@@ -53,7 +53,12 @@ Operations
 
 ```
 print(!true) # false
+print(true && false) # false
+print(true || false) # true
 ```
+
+Binary boolean operations short-circuit, so an expression like `true || "none"`
+will evaluate to `true` instead of evaluating to an exception.
 
 ### Integers
 
@@ -134,13 +139,6 @@ concatenation to a variable:
 x := [1, 2]
 x += [3, 4]
 print(x) # [1, 2, 3, 4]
-```
-
-### Boolean
-
-```
-print(true && false) # false
-print(true || false) # true
 ```
 
 ### Equality

@@ -1,4 +1,4 @@
-// Copyright 2025 Sean Kelleher. All rights reserved.
+// Copyright 2025-2026 Sean Kelleher. All rights reserved.
 // Use of this source code is governed by an MIT
 // licence that can be found in the LICENCE file.
 
@@ -321,6 +321,7 @@ fn eval_err_to_stacktrace(path: &Path, func: Option<&str>, error: EvalError)
         EvalError::EvalStmtFailed{source} |
         EvalError::EvalBinOpLhsFailed{source} |
         EvalError::EvalBinOpRhsFailed{source} |
+        EvalError::ApplyBoolOpFailed{source} |
         EvalError::ApplyBinOpFailed{source} |
         EvalError::BinOpAssignListIndexFailed{source} |
         EvalError::BinOpAssignObjectIndexFailed{source} |

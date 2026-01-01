@@ -1,4 +1,4 @@
-// Copyright 2025 Sean Kelleher. All rights reserved.
+// Copyright 2025-2026 Sean Kelleher. All rights reserved.
 // Use of this source code is governed by an MIT
 // licence that can be found in the LICENCE file.
 
@@ -68,6 +68,12 @@ pub enum Error {
         render_type(rhs),
     ))]
     InvalidBinOpTypes{op: BinaryOp, lhs: Value, rhs: Value},
+    #[snafu(display(
+        "can't apply '{}' to '{}'",
+        bin_op_symbol(op),
+        render_type(lhs),
+    ))]
+    InvalidBoolOpLhsType{op: BinaryOp, lhs: Value},
     #[snafu(display("'break' can't be used outside of a loop"))]
     BreakOutsideLoop,
     #[snafu(display("'continue' can't be used outside of a loop"))]
@@ -352,6 +358,10 @@ pub enum Error {
         source: Box<Error>,
     },
     EvalBinOpRhsFailed{
+        #[snafu(source(from(Error, Box::new)))]
+        source: Box<Error>,
+    },
+    ApplyBoolOpFailed{
         #[snafu(source(from(Error, Box::new)))]
         source: Box<Error>,
     },

@@ -1,4 +1,4 @@
-// Copyright 2025 Sean Kelleher. All rights reserved.
+// Copyright 2025-2026 Sean Kelleher. All rights reserved.
 // Use of this source code is governed by an MIT
 // licence that can be found in the LICENCE file.
 
@@ -529,6 +529,21 @@ fn eval_expr(
             let lhs_val = eval_expr(context, scopes, lhs)
                 .context(EvalBinOpLhsFailed)?;
 
+            if op == &BinaryOp::And || op == &BinaryOp::Or {
+                let v =
+                    apply_boolean_operation(
+                        context,
+                        scopes,
+                        op,
+                        op_loc,
+                        &lhs_val.v,
+                        rhs,
+                    )
+                        .context(ApplyBinOpFailed)?;
+
+                return Ok(value::new_val_ref_with_no_source(v));
+            }
+
             let rhs_val = eval_expr(context, scopes, rhs)
                 .context(EvalBinOpRhsFailed)?;
 
@@ -959,6 +974,69 @@ fn apply_unary_operation(
     }
 }
 
+fn apply_boolean_operation(
+    context: &EvaluationContext,
+    scopes: &mut ScopeStack,
+    op: &BinaryOp,
+    op_loc: &Location,
+    lhs_val: &Value,
+    rhs: &Expr,
+)
+    -> Result<Value>
+{
+    let (line, col) = op_loc;
+
+    let a =
+        if let Value::Bool(v) = lhs_val {
+            v
+        } else {
+            return Err(Error::AtLoc{
+                source: Box::new(Error::InvalidBoolOpLhsType{
+                    op: op.clone(),
+                    lhs: lhs_val.clone(),
+                }),
+                line: *line,
+                col: *col,
+            });
+        };
+
+    match op {
+        BinaryOp::And => {
+            if !*a {
+                return Ok(Value::Bool(false))
+            }
+        },
+        BinaryOp::Or => {
+            if *a {
+                return Ok(Value::Bool(true))
+            }
+        },
+        _ => {
+            panic!("unexpected operation");
+        },
+    }
+
+    let rhs_val = eval_expr(context, scopes, rhs)
+        .context(EvalBinOpRhsFailed)?;
+
+    let b =
+        if let Value::Bool(v) = rhs_val.v {
+            v
+        } else {
+            return Err(Error::AtLoc{
+                source: Box::new(Error::InvalidBinOpTypes{
+                    op: op.clone(),
+                    lhs: lhs_val.clone(),
+                    rhs: rhs_val.v.clone(),
+                }),
+                line: *line,
+                col: *col,
+            });
+        };
+
+    Ok(Value::Bool(b))
+}
+
 #[allow(clippy::too_many_lines)]
 fn apply_binary_operation(
     op: &BinaryOp,
@@ -1105,23 +1183,7 @@ fn apply_binary_operation(
 
         BinaryOp::And |
         BinaryOp::Or => {
-            match (lhs, rhs) {
-                (Value::Bool(a), Value::Bool(b)) => {
-                    let v =
-                        match op {
-                            BinaryOp::And => *a && *b,
-                            BinaryOp::Or => *a || *b,
-
-                            _ => panic!("unexpected operation"),
-                        };
-
-                    Ok(Value::Bool(v))
-                },
-
-                _ => {
-                    Err(new_invalid_op_types())
-                },
-            }
+            panic!("unexpected operation");
         },
 
         BinaryOp::Gt |
