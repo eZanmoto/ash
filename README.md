@@ -32,6 +32,22 @@ Ash in particular is intended to be used as "glue" for assembling programs as
 the composition of other programs, and isn't intended to perform any low-level
 or performance-critical processing itself.
 
+#### Correctness without verbosity
+
+As an alternative to Bash, Ash is intended to be used as a scripting language
+used to glue other programs and processes together. As such, we aim to minimise
+overheads like static typing and other compile-time checks. However, we apply a
+number of ideas to the language that are intended to encourage correctness,
+while minimising the overheads resulting from such constraints:
+
+* Strongly-typed operations: Operations are not overloaded nor coercive. This
+  can help catch simpler type errors without the need for widespread type
+  annotations.
+* Immutability by default: The default declaration operation (`:=`) creates an
+  immutable variable, which can limit the impact of accidentally sharing global
+  variables. Declaring variables as mutable only requires an additional
+  character.
+
 Installation
 ------------
 
