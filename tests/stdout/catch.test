@@ -27,7 +27,7 @@ if ok && v != 0 {
 --------------------------------------------------
 nothing
 ================================================== shorthand_prop_not_found
-person := {"name": {}}
+person := {"name": ${}}
 [fname, ok] $:= ? person.name.first
 if ok {
     print(fname)

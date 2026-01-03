@@ -9,6 +9,7 @@ use std::sync::Mutex;
 use crate::ast::Block;
 use crate::eval::Expr;
 use crate::eval::Result;
+use super::scope::Mutability;
 use super::scope::ScopeStack;
 
 // `lock_deref` must be defined as a macro, because a reference to the
@@ -59,8 +60,8 @@ pub enum Value {
     Int(i64),
     Str(Str),
 
-    List(ListRef),
-    Object(ObjectRef),
+    List{items: ListRef, is_mutable: bool},
+    Object{props: ObjectRef, is_mutable: bool},
 
     BuiltinFunc{name: String, f: BuiltinFunc},
     Func(Arc<Mutex<Func>>),
@@ -111,12 +112,18 @@ pub fn new_str_from_string(s: String) -> SourcedValue {
     new_val_ref_with_no_source(Value::Str(s.into_bytes()))
 }
 
-pub fn new_list(list: List) -> SourcedValue {
-    new_val_ref_with_no_source(Value::List(Arc::new(Mutex::new(list))))
+pub fn new_list(list: List, mutability: &Mutability) -> SourcedValue {
+    new_val_ref_with_no_source(Value::List{
+        items: Arc::new(Mutex::new(list)),
+        is_mutable: *mutability == Mutability::Var,
+    })
 }
 
-pub fn new_object(object: Object) -> SourcedValue {
-    new_val_ref_with_no_source(Value::Object(Arc::new(Mutex::new(object))))
+pub fn new_object(object: Object, mutability: &Mutability) -> SourcedValue {
+    new_val_ref_with_no_source(Value::Object{
+        props: Arc::new(Mutex::new(object)),
+        is_mutable: *mutability == Mutability::Var,
+    })
 }
 
 pub fn new_func(

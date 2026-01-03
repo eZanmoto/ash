@@ -56,6 +56,8 @@ pub enum Token {
     ColonEquals,
     DashGreaterThan,
     DivEquals,
+    DollarBraceOpen,
+    DollarBracketOpen,
     DotDot,
     EqualsEquals,
     GreaterThanEquals,
@@ -497,6 +499,8 @@ impl Iterator for Lexer<'_> {
                     Token::Comma |
                     Token::Div |
                     Token::DivEquals |
+                    Token::DollarBraceOpen |
+                    Token::DollarBracketOpen |
                     Token::DollarColonEquals |
                     Token::Dot |
                     Token::Equals |
@@ -553,20 +557,22 @@ fn match_single_symbol_token(c: char) -> Option<Token> {
 
 fn match_double_symbol_token(a: char, b: char) -> Option<Token> {
     match (a, b) {
-        ('&', '&') => Some(Token::AmpAmp),
         ('!', '=') => Some(Token::BangEquals),
-        (':', '=') => Some(Token::ColonEquals),
+        ('$', '[') => Some(Token::DollarBracketOpen),
+        ('$', '{') => Some(Token::DollarBraceOpen),
+        ('%', '=') => Some(Token::ModEquals),
+        ('&', '&') => Some(Token::AmpAmp),
+        ('*', '=') => Some(Token::MulEquals),
+        ('+', '=') => Some(Token::SumEquals),
+        ('-', '=') => Some(Token::SubEquals),
         ('-', '>') => Some(Token::DashGreaterThan),
-        ('/', '=') => Some(Token::DivEquals),
         ('.', '.') => Some(Token::DotDot),
+        ('/', '=') => Some(Token::DivEquals),
+        (':', '=') => Some(Token::ColonEquals),
+        ('<', '=') => Some(Token::LessThanEquals),
         ('=', '=') => Some(Token::EqualsEquals),
         ('>', '=') => Some(Token::GreaterThanEquals),
-        ('<', '=') => Some(Token::LessThanEquals),
-        ('%', '=') => Some(Token::ModEquals),
-        ('*', '=') => Some(Token::MulEquals),
         ('|', '|') => Some(Token::PipePipe),
-        ('-', '=') => Some(Token::SubEquals),
-        ('+', '=') => Some(Token::SumEquals),
 
         _ => None,
     }

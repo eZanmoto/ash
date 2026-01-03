@@ -99,7 +99,13 @@ pub fn bind_next(
 
         RawExpr::Index{expr, location: locat} => {
             match_eval_expr!((context, scopes, expr) {
-                Value::List(items) => {
+                Value::List{items, is_mutable} => {
+                    if !is_mutable {
+                        return new_loc_err(Error::ListNotMutable{
+                            assign_type: "Index".to_string(),
+                        });
+                    }
+
                     let n = eval::eval_expr_to_index(context, scopes, locat)
                         .context(EvalListIndexFailed)?;
 
@@ -117,7 +123,13 @@ pub fn bind_next(
                     Ok(())
                 },
 
-                Value::Object(props) => {
+                Value::Object{props, is_mutable} => {
+                    if !is_mutable {
+                        return new_loc_err(Error::ObjectNotMutable{
+                            assign_type: "Index".to_string(),
+                        });
+                    }
+
                     // TODO Consider whether non-UTF-8 strings can be used to
                     // perform key lookups on objects.
                     let descr = "property";
@@ -153,9 +165,15 @@ pub fn bind_next(
             }
 
             match_eval_expr!((context, scopes, expr) {
-                Value::List(mut lhs_items) => {
+                Value::List{items: mut lhs_items, is_mutable} => {
+                    if !is_mutable {
+                        return new_loc_err(Error::ListNotMutable{
+                            assign_type: "RangeIndex".to_string(),
+                        });
+                    }
+
                     match rhs.v {
-                        Value::List(rhs_items) => {
+                        Value::List{items: rhs_items, ..} => {
                             let rhs = lock_deref!(rhs_items).clone();
 
                             bind_range_index(
@@ -203,7 +221,13 @@ pub fn bind_next(
             }
 
             match_eval_expr!((context, scopes, expr) {
-                Value::Object(props) => {
+                Value::Object{props, is_mutable} => {
+                    if !is_mutable {
+                        return new_loc_err(Error::ObjectNotMutable{
+                            assign_type: "Prop".to_string(),
+                        });
+                    }
+
                     if let Some(slot) = lock_deref!(props).get_mut(name) {
                         binary_operation_assign(slot, rhs, op)
                             .context(BinOpAssignPropFailed)?;
@@ -228,13 +252,13 @@ pub fn bind_next(
             })
         },
 
-        RawExpr::Object{props: lhs_props} => {
+        RawExpr::Object{props: lhs_props, ..} => {
             if op.is_some() {
                 return new_loc_err(Error::OpOnObjectDestructure);
             }
 
             match rhs.v {
-                Value::Object(rhs_props) => {
+                Value::Object{props: rhs_props, ..} => {
                     bind_object(
                         context,
                         scopes,
@@ -251,13 +275,13 @@ pub fn bind_next(
             }
         },
 
-        RawExpr::List{items: lhs_items, collect} => {
+        RawExpr::List{items: lhs_items, collect, ..} => {
             if op.is_some() {
                 return new_loc_err(Error::OpOnListDestructure);
             }
 
             match rhs.v {
-                Value::List(rhs_items) => {
+                Value::List{items: rhs_items, ..} => {
                     bind_list(
                         context,
                         scopes,
@@ -556,7 +580,7 @@ fn bind_object(
                         names_in_binding,
                         &prop_name,
                         prop_name_loc,
-                        value::new_object(new_rhs),
+                        value::new_object(new_rhs, &Mutability::Const),
                         None,
                         bind_type,
                     )
@@ -685,7 +709,10 @@ fn bind_list(
 
         let rhs =
             if *collect && i == lhs_len-1 {
-                value::new_list(lock_deref!(rhs)[lhs_len-1 ..].to_vec())
+                value::new_list(
+                    lock_deref!(rhs)[lhs_len-1 ..].to_vec(),
+                    &Mutability::Const,
+                )
             } else {
                 lock_deref!(rhs)[i].clone()
             };

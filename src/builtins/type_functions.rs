@@ -1,4 +1,4 @@
-// Copyright 2025 Sean Kelleher. All rights reserved.
+// Copyright 2025-2026 Sean Kelleher. All rights reserved.
 // Use of this source code is governed by an MIT
 // licence that can be found in the LICENCE file.
 
@@ -116,8 +116,8 @@ fn render_type(v: &Value) -> String {
             Value::Int(_) => "int",
             Value::Str(_) => "string",
 
-            Value::List(_) => "list",
-            Value::Object(_) => "object",
+            Value::List{..} => "list",
+            Value::Object{..} => "object",
 
             Value::BuiltinFunc{..} | Value::Func{..} => "func",
         };

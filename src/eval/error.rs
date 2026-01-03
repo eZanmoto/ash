@@ -84,6 +84,10 @@ pub enum Error {
     ReturnOutsideFunction,
     #[snafu(display("'for' iterator must be a 'list', 'object' or 'string'"))]
     ForIterNotIterable,
+    #[snafu(display("this object is not mutable"))]
+    ObjectNotMutable{assign_type: String},
+    #[snafu(display("this list is not mutable"))]
+    ListNotMutable{assign_type: String},
     #[snafu(display("only 'list's, 'object's or 'string's can be indexed"))]
     ValueNotIndexable,
     #[snafu(display("only 'list's or 'object's can update indices"))]
@@ -519,8 +523,8 @@ pub fn render_type(v: &Value) -> String {
             Value::Int(_) => "int",
             Value::Str(_) => "string",
 
-            Value::List(_) => "list",
-            Value::Object(_) => "object",
+            Value::List{..} => "list",
+            Value::Object{..} => "object",
 
             Value::BuiltinFunc{..} | Value::Func{..} => "func",
         };

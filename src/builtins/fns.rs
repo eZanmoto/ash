@@ -1,4 +1,4 @@
-// Copyright 2025 Sean Kelleher. All rights reserved.
+// Copyright 2025-2026 Sean Kelleher. All rights reserved.
 // Use of this source code is governed by an MIT
 // licence that can be found in the LICENCE file.
 
@@ -59,8 +59,13 @@ fn render(v: &SourcedValue) -> Result<String> {
             s += &rendered_str;
         },
 
-        Value::List(items) => {
-            s += "[\n";
+        Value::List{items, is_mutable} => {
+            let mut mutability = "";
+            if is_mutable {
+                mutability = "$";
+            }
+
+            s += &format!("{mutability}[\n");
             for item in &lock_deref!(items) {
                 let rendered_item = render(item)?;
                 let indented = rendered_item.replace('\n', "\n    ");
@@ -69,8 +74,13 @@ fn render(v: &SourcedValue) -> Result<String> {
             s += "]";
         },
 
-        Value::Object(props) => {
-            s += "{\n";
+        Value::Object{props, is_mutable} => {
+            let mut mutability = "";
+            if is_mutable {
+                mutability = "$";
+            }
+
+            s += &format!("{mutability}{{\n");
             for (name, prop) in &lock_deref!(props) {
                 let rendered_prop = render(prop)?;
                 let indented = rendered_prop.replace('\n', "\n    ");

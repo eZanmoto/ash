@@ -259,6 +259,8 @@ fn render_token(t: Token) -> String {
         Token::ColonEquals => ":=".to_string(),
         Token::DashGreaterThan => "->".to_string(),
         Token::DivEquals => "/=".to_string(),
+        Token::DollarBraceOpen => "${".to_string(),
+        Token::DollarBracketOpen => "$[".to_string(),
         Token::DotDot => "..".to_string(),
         Token::EqualsEquals => "==".to_string(),
         Token::GreaterThanEquals => ">=".to_string(),
@@ -269,9 +271,9 @@ fn render_token(t: Token) -> String {
         Token::SubEquals => "-=".to_string(),
         Token::SumEquals => "+=".to_string(),
 
+        Token::BangEqualsEquals => "!==".to_string(),
         Token::DollarColonEquals => "$:=".to_string(),
         Token::EqualsEqualsEquals => "===".to_string(),
-        Token::BangEqualsEquals => "!==".to_string(),
     }
 }
 

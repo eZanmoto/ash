@@ -31,6 +31,7 @@ use self::builtins::Builtins;
 #[allow(clippy::wildcard_imports)]
 use self::error::*;
 use self::error::Error;
+use self::scope::Mutability;
 use self::scope::ScopeStack;
 use self::value::BuiltinFunc;
 use self::value::Func;
@@ -274,7 +275,8 @@ fn eval_stmt(
                     .context(ConvertForIterToPairsFailed)?;
 
             for (key, value) in pairs {
-                let pair = value::new_list(vec![key, value]);
+                let pair =
+                    value::new_list(vec![key, value], &Mutability::Const);
 
                 let new_bindings = vec![(lhs.clone(), pair)];
 
@@ -360,7 +362,7 @@ fn validate_args(args: &[Expr]) -> Result<()> {
                 name_locs.insert(name.clone(), loc);
             },
 
-            RawExpr::Object{props} => {
+            RawExpr::Object{props, ..} => {
                 for prop in props {
                     match prop {
                         PropItem::Pair{name: _, value} => {
@@ -378,7 +380,7 @@ fn validate_args(args: &[Expr]) -> Result<()> {
                 }
             },
 
-            RawExpr::List{items, collect: _} => {
+            RawExpr::List{items, collect: _, ..} => {
                 for ListItem{expr, is_spread} in items {
                     if is_spread {
                         return new_loc_err(Error::ItemSpreadInParamList);
@@ -436,7 +438,7 @@ fn value_to_pairs(v: &Value) -> Result<Vec<(SourcedValue, SourcedValue)>> {
             Ok(pairs)
         },
 
-        Value::List(items) => {
+        Value::List{items, ..} => {
             let items = &lock_deref!(items);
 
             let mut pairs = Vec::with_capacity(items.len());
@@ -450,7 +452,7 @@ fn value_to_pairs(v: &Value) -> Result<Vec<(SourcedValue, SourcedValue)>> {
             Ok(pairs)
         },
 
-        Value::Object(props) => {
+        Value::Object{props, ..} => {
             let props = &lock_deref!(props);
 
             let pairs =
@@ -568,7 +570,7 @@ fn eval_expr(
             Ok(value::new_val_ref_with_no_source(v))
         },
 
-        RawExpr::List{items, collect} => {
+        RawExpr::List{items, collect, is_mutable} => {
             if *collect {
                 return new_loc_err(Error::ListCollectOutsideDestructure);
             }
@@ -576,7 +578,12 @@ fn eval_expr(
             let vals = eval_list_items(context, scopes, items)
                 .context(EvalListItemsFailed)?;
 
-            Ok(value::new_list(vals))
+            let mut m = Mutability::Const;
+            if *is_mutable {
+                m = Mutability::Var;
+            }
+
+            Ok(value::new_list(vals, &m))
         },
 
         RawExpr::Index{expr, location: locat} => {
@@ -605,12 +612,12 @@ fn eval_expr(
                     Ok(v)
                 },
 
-                Value::List(list) => {
+                Value::List{items, ..} => {
                     let index = eval_expr_to_index(context, scopes, locat)
                         .context(EvalListIndexFailed)?;
 
                     let v =
-                        match lock_deref!(list).get(index) {
+                        match lock_deref!(items).get(index) {
                             Some(v) => v.clone(),
                             None => return new_loc_err(
                                 #[allow(clippy::uninlined_format_args)]
@@ -624,7 +631,7 @@ fn eval_expr(
                     Ok(v)
                 },
 
-                Value::Object(ref props) => {
+                Value::Object{ref props, ..} => {
                     // TODO Consider whether non-UTF-8 strings can be used to
                     // perform key lookups on objects.
                     let name =
@@ -697,7 +704,7 @@ fn eval_expr(
                     Ok(v)
                 },
 
-                Value::List(items) => {
+                Value::List{items, ..} => {
                     let range_values =
                         get_list_range_index(&items, start_val, end_val);
 
@@ -737,10 +744,10 @@ fn eval_expr(
                     .map(value::new_int)
                     .collect();
 
-            Ok(value::new_list(range))
+            Ok(value::new_list(range, &Mutability::Const))
         },
 
-        RawExpr::Object{props} => {
+        RawExpr::Object{props, is_mutable} => {
             let mut vals = BTreeMap::<String, SourcedValue>::new();
 
             for prop in props {
@@ -766,7 +773,7 @@ fn eval_expr(
 
                         if *is_spread {
                             match_eval_expr!((context, scopes, expr) {
-                                Value::Object(props) => {
+                                Value::Object{props, ..} => {
                                     for (name, value) in &lock_deref!(props) {
                                         vals.insert(
                                             name.to_string(),
@@ -820,7 +827,12 @@ fn eval_expr(
                 }
             }
 
-            Ok(value::new_object(vals))
+            let mut m = Mutability::Const;
+            if *is_mutable {
+                m = Mutability::Var;
+            }
+
+            Ok(value::new_object(vals, &m))
         },
 
         RawExpr::Prop{expr, name, type_prop} => {
@@ -836,9 +848,9 @@ fn eval_expr(
                             &context.builtins.type_functions.ints,
                         Value::Str(_) =>
                             &context.builtins.type_functions.strs,
-                        Value::List(_) =>
+                        Value::List{..} =>
                             &context.builtins.type_functions.lists,
-                        Value::Object(_) =>
+                        Value::Object{..} =>
                             &context.builtins.type_functions.objects,
                         Value::BuiltinFunc{..} | Value::Func{..}  =>
                             &context.builtins.type_functions.funcs,
@@ -849,7 +861,7 @@ fn eval_expr(
                     }
                 } else {
                     match source.v {
-                        Value::Object(ref props) => props,
+                        Value::Object{ref props, ..} => props,
 
                         value => {
                             return new_loc_err(Error::PropAccessOnNonObject{
@@ -916,7 +928,10 @@ fn eval_expr(
                     },
                 };
 
-            Ok(value::new_list(vec![maybe_value, maybe_err]))
+            Ok(value::new_list(
+                vec![maybe_value, maybe_err],
+                &Mutability::Const,
+            ))
         },
     }
 }
@@ -1141,11 +1156,17 @@ fn apply_binary_operation(
                 (Value::Str(a), Value::Str(b)) => {
                     Ok(Value::Str([a.clone(), b.clone()].concat()))
                 },
-                (Value::List(a), Value::List(b)) => {
+                (
+                    Value::List{items: a, is_mutable: a_mut},
+                    Value::List{items: b, is_mutable: b_mut},
+                ) => {
                     let a = lock_deref!(a).clone();
                     let b = lock_deref!(b).clone();
 
-                    Ok(Value::List(Arc::new(Mutex::new([a, b].concat()))))
+                    Ok(Value::List{
+                        items: Arc::new(Mutex::new([a, b].concat())),
+                        is_mutable: *a_mut && *b_mut,
+                    })
                 },
                 _ => {
                     Err(new_invalid_op_types())
@@ -1244,7 +1265,7 @@ fn eq(lhs: &Value, rhs: &Value) -> StdResult<bool, (String, String, String)> {
         (Value::Str(a), Value::Str(b)) =>
             Ok(a == b),
 
-        (Value::List(xs), Value::List(ys)) => {
+        (Value::List{items: xs, ..}, Value::List{items: ys, ..}) => {
             if value::ref_eq(xs, ys) {
                 return Ok(true);
             }
@@ -1274,7 +1295,7 @@ fn eq(lhs: &Value, rhs: &Value) -> StdResult<bool, (String, String, String)> {
             Ok(true)
         },
 
-        (Value::Object(xs), Value::Object(ys)) => {
+        (Value::Object{props: xs, ..}, Value::Object{props: ys, ..}) => {
             if value::ref_eq(xs, ys) {
                 return Ok(true);
             }
@@ -1321,11 +1342,11 @@ fn eq(lhs: &Value, rhs: &Value) -> StdResult<bool, (String, String, String)> {
 
 fn ref_eq(lhs: &Value, rhs: &Value) -> Option<bool> {
     match (lhs, rhs) {
-        (Value::List(a), Value::List(b)) => {
+        (Value::List{items: a, ..}, Value::List{items: b, ..}) => {
             Some(value::ref_eq(a, b))
         },
 
-        (Value::Object(a), Value::Object(b)) => {
+        (Value::Object{props: a, ..}, Value::Object{props: b, ..}) => {
             Some(value::ref_eq(a, b))
         },
 
@@ -1478,7 +1499,7 @@ fn get_list_range_index(
     let end = maybe_end.get_or_insert(lock_deref!(list).len());
 
     if let Some(vs) = lock_deref!(list).get(*start .. *end) {
-        return Ok(value::new_list(vs.to_vec()));
+        return Ok(value::new_list(vs.to_vec(), &Mutability::Const));
     }
 
     Err(Error::RangeOutOfListBounds{start: *start, end: *end})
@@ -1497,29 +1518,27 @@ fn eval_list_items(
         let v = eval_expr(context, scopes, &item.expr)
             .context(EvalListItemFailed)?;
 
-        if !item.is_spread {
+        if item.is_spread {
+            match v.v {
+                Value::List{items, ..} => {
+                    for item in &lock_deref!(items) {
+                        vals.push(item.clone());
+                    }
+                },
+
+                value => {
+                    let (_, (line, col)) = item.expr;
+
+                    return Err(Error::AtLoc{
+                        source: Box::new(Error::SpreadNonListInList{value}),
+                        line,
+                        col,
+                    })
+                },
+            }
+        } else {
             vals.push(v);
-
-            continue;
         }
-
-        match v.v {
-            Value::List(items) => {
-                for item in &lock_deref!(items) {
-                    vals.push(item.clone());
-                }
-            },
-
-            value => {
-                let (_, (line, col)) = item.expr;
-
-                return Err(Error::AtLoc{
-                    source: Box::new(Error::SpreadNonListInList{value}),
-                    line,
-                    col,
-                })
-            },
-        };
     }
 
     Ok(vals)
@@ -1591,7 +1610,12 @@ fn eval_call(
                             if *collect_args && i == num_params-1 {
                                 let rest = arg_vals[num_params-1 ..].to_vec();
 
-                                value::new_list(rest)
+                                // TODO It was considered whether function
+                                // parameters should be bound as constant
+                                // declarations. For now, the decision is to
+                                // add a linting check for assignments to
+                                // function parameters.
+                                value::new_list(rest, &Mutability::Var)
                             } else {
                                 arg_vals[i].clone()
                             };

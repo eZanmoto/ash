@@ -82,7 +82,7 @@ pub enum RawExpr {
         rhs: Box<Expr>,
     },
 
-    List{items: Vec<ListItem>, collect: bool},
+    List{items: Vec<ListItem>, collect: bool, is_mutable: bool},
     Index{expr: Box<Expr>, location: Box<Expr>},
     RangeIndex{
         expr: Box<Expr>,
@@ -91,7 +91,7 @@ pub enum RawExpr {
     },
     Range{start: Box<Expr>, end: Box<Expr>},
 
-    Object{props: Vec<PropItem>},
+    Object{props: Vec<PropItem>, is_mutable: bool},
     Prop{expr: Box<Expr>, name: String, type_prop: bool},
 
     Func{args: Vec<Expr>, collect_args: bool, stmts: Block},

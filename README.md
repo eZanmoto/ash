@@ -44,9 +44,10 @@ while minimising the overheads resulting from such constraints:
   can help catch simpler type errors without the need for widespread type
   annotations.
 * Immutability by default: The default declaration operation (`:=`) creates an
-  immutable variable, which can limit the impact of accidentally sharing global
-  variables. Declaring variables as mutable only requires an additional
-  character.
+  immutable variable, and the default syntax for lists and objects are immutable
+  by default, which limits the impact of sharing such values across different
+  boundaries. Declaring variables and values as mutable only requires one
+  additional character.
 
 Installation
 ------------

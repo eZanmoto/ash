@@ -35,6 +35,13 @@ false
 fn f() {}
 ```
 
+Lists and objects are immutable by default, but can be made mutable by prefixing
+the literal with `$`:
+
+```
+xs := ${"mutable": true}
+```
+
 Integers can be formatted using underscore to help reading:
 
 ```
@@ -44,6 +51,59 @@ Integers can be formatted using underscore to help reading:
 ```
 # Escape sequences in strings:
 "\"\x41n example string\"\n"
+```
+
+Mutability
+----------
+
+Bindings and compound type values are immutable by default, and are made mutable
+by prefixing the bind or the literal with `$`.
+
+Note that the mutability of a binding is separate to the mutability of any
+compound-typed value it references:
+
+```
+read_only := ${"mutable": true}
+```
+
+In this scenario, attempting to change the value of `read_only` will result in
+an error, but updating a property of the object will succeed:
+
+```
+read_only := 1 # Error
+read_only.mutable = false # Success
+```
+
+It's also worth noting that mutability doesn't propagate by default, so it's
+possible to have nested layers with different mutabilities, though it's
+encouraged to keep mutability uniform in nested structures:
+
+```
+mixed := {
+    "mutable": false,
+    "nested": ${
+        "mutable": true,
+        "name": "Jo",
+        "nested": {
+            "mutable": false,
+            "age": 21,
+        }
+    }
+}
+
+mixed.name = "test" # Error
+mixed.nested.name = "test" # Success
+mixed.nested.nested.age = "test" # Error
+```
+
+Changing the mutability of a structure requires creating a new structure with
+the desired mutability. This can be useful for initialising objects easily, and
+then exporting them in a read-only format:
+
+```
+writeable := $[]
+# Initalise `writeable`...
+read_only := [writeable...]
 ```
 
 Operations
@@ -141,6 +201,9 @@ x += [3, 4]
 print(x) # [1, 2, 3, 4]
 ```
 
+NOTE The concatenation of two lists will only be mutable if both of the original
+lists are mutable, otherwise the new list will be immutable.
+
 ### Equality
 
 ```
@@ -161,6 +224,10 @@ print({} == {}) # true
 print({} == {"a": 1}) # false
 print({"a": 1} == {"a": 1}) # true
 ```
+
+NOTE Immutability isn't checked when checking equality. A mutable list is
+considered equal to an immutable list with the same elements, and vice-versa.
+The same applies for objects.
 
 Reference equality can be performed on reference types (lists, objects and
 functions):
@@ -324,14 +391,17 @@ boundaries, so care should be taken when handling strings using UTF-8 encoding.
 ```
 xs $:= null
 
-xs = ["a", "b", "c"]
+xs = $["a", "b", "c"]
 xs[1] = "d"
 print(xs) # ["a", "d", "c"]
 
-xs = {"a": 1, "b": 2, "c": 3}
+xs = ${"a": 1, "b": 2, "c": 3}
 xs["b"] = 4
 print(xs) # {"a": 1, "b": 4, "c": 3}
 ```
+
+Note that assigning to an index of an immutable list or object will evaluate to
+an exception.
 
 #### List destructuring
 
@@ -383,7 +453,7 @@ print(xs.b) # 2
 The same shorthand can be used for updating objects:
 
 ```
-xs := {"a": 1, "b": null, "c": 3}
+xs := ${"a": 1, "b": null, "c": 3}
 xs.b = 2
 xs.d = 4
 print(xs) # {"a": 1, "b": 2, "c": 3, "d": 4}
@@ -456,11 +526,11 @@ print("abcdef"[:]) # abcdef
 Range-indexing can also be used with assignments:
 
 ```
-xs := [1, 2, 3, 4, 5]
+xs := $[1, 2, 3, 4, 5]
 xs[1:4] = [7, 8, 9]
 print(xs) # [1, 7, 8, 9, 5]
 xs[1:4] = "abc"
-print(xs) # [1, "a", "b", "c", 5]
+print(xs) # $[1, "a", "b", "c", 5]
 ```
 
 Note that range-indexing with a string on the right hand side will index the
@@ -689,7 +759,7 @@ If an object property is a function, then when that function is called, `this`
 will refer to the object within the scope of the function:
 
 ```
-person := {
+person := ${
     "_age": 20,
 
     "age": fn () {
@@ -700,9 +770,13 @@ person := {
 print(person.age()) # 20
 ```
 
+Note that the `person` object must be made mutable with `$` in order to modify
+its `age` property.
+
 The value of `this` is based on the "call path" of the function call. For
 example, if the same function is assigned to object `a` and object `b`, then
 `this` in `a.f()` will refer to `a`, and `this` in `b.f()` will refer to `b`:
+
 
 ```
 f := fn () {

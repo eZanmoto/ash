@@ -263,10 +263,18 @@ pub ExprPrecedence6: RawExpr = {
     "[" <raw_items:ExprList> "]" => {
         let (items, collect) = raw_items;
 
-        RawExpr::List{items, collect}
+        RawExpr::List{items, collect, is_mutable: false}
     },
 
-    "{" <props:PropList> "}" => RawExpr::Object{props},
+    "$[" <raw_items:ExprList> "]" => {
+        let (items, collect) = raw_items;
+
+        RawExpr::List{items, collect, is_mutable: true}
+    },
+
+    "{" <props:PropList> "}" => RawExpr::Object{props, is_mutable: false},
+
+    "${" <props:PropList> "}" => RawExpr::Object{props, is_mutable: true},
 
     "fn" "(" <raw_args:ParamList> ")" <stmts:Block> => {
         let (args, collect_args) = raw_args;
@@ -395,24 +403,25 @@ extern {
         "-" => Token::Sub,
         "+" => Token::Sum,
 
-        "&&" => Token::AmpAmp,
         "!=" => Token::BangEquals,
+        "$[" => Token::DollarBracketOpen,
+        "${" => Token::DollarBraceOpen,
+        "%=" => Token::ModEquals,
+        "&&" => Token::AmpAmp,
+        "*=" => Token::MulEquals,
+        "+=" => Token::SumEquals,
+        "-=" => Token::SubEquals,
         "->" => Token::DashGreaterThan,
-        "/=" => Token::DivEquals,
         ".." => Token::DotDot,
+        "/=" => Token::DivEquals,
+        ":=" => Token::ColonEquals,
+        "<=" => Token::LessThanEquals,
         "==" => Token::EqualsEquals,
         ">=" => Token::GreaterThanEquals,
-        "<=" => Token::LessThanEquals,
-        "%=" => Token::ModEquals,
-        "*=" => Token::MulEquals,
         "||" => Token::PipePipe,
-        "-=" => Token::SubEquals,
-        "+=" => Token::SumEquals,
 
-        ":=" => Token::ColonEquals,
-
+        "!==" => Token::BangEqualsEquals,
         "$:=" => Token::DollarColonEquals,
         "===" => Token::EqualsEqualsEquals,
-        "!==" => Token::BangEqualsEquals,
     }
 }
