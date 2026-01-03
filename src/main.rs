@@ -269,6 +269,7 @@ fn render_token(t: Token) -> String {
         Token::SubEquals => "-=".to_string(),
         Token::SumEquals => "+=".to_string(),
 
+        Token::DollarColonEquals => "$:=".to_string(),
         Token::EqualsEqualsEquals => "===".to_string(),
         Token::BangEqualsEquals => "!==".to_string(),
     }

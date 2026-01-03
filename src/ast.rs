@@ -1,4 +1,4 @@
-// Copyright 2025 Sean Kelleher. All rights reserved.
+// Copyright 2025-2026 Sean Kelleher. All rights reserved.
 // Use of this source code is governed by an MIT
 // licence that can be found in the LICENCE file.
 
@@ -15,7 +15,7 @@ pub enum Stmt {
 
     Expr{expr: Expr},
 
-    Declare{lhs: Expr, rhs: Expr},
+    Declare{lhs: Expr, rhs: Expr, typ: DeclarationType},
     Assign{lhs: Expr, rhs: Expr},
     OpAssign{
         lhs: Expr,
@@ -44,6 +44,12 @@ pub enum Stmt {
 pub struct Branch {
     pub cond: Expr,
     pub stmts: Block,
+}
+
+#[derive(Clone,Debug)]
+pub enum DeclarationType {
+    Const,
+    Var,
 }
 
 pub type Location = (usize, usize);

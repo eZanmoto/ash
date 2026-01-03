@@ -1,4 +1,4 @@
-// Copyright 2025 Sean Kelleher. All rights reserved.
+// Copyright 2025-2026 Sean Kelleher. All rights reserved.
 // Use of this source code is governed by an MIT
 // licence that can be found in the LICENCE file.
 
@@ -66,6 +66,7 @@ pub enum Token {
     SubEquals,
     SumEquals,
 
+    DollarColonEquals,
     EqualsEqualsEquals,
     BangEqualsEquals,
 }
@@ -301,6 +302,8 @@ impl<'input> Lexer<'input> {
             if let Some(new_t) = match_single_symbol_token(char1) {
                 new_t
             } else {
+                self.scanner.next_char();
+
                 return self.next_multi_symbol_token(char1);
             };
         self.scanner.next_char();
@@ -350,8 +353,6 @@ impl<'input> Lexer<'input> {
     }
 
     fn next_multi_symbol_token(&mut self, char1: char) -> Option<Token> {
-        self.scanner.next_char();
-
         let char2 = self.scanner.peek_char()?;
         self.scanner.next_char();
 
@@ -412,13 +413,25 @@ impl<'input> Lexer<'input> {
                     Ok(n) => n,
                     Err(e) => return Some(Err(e)),
                 }
-            } else if c == '"' || c == '$' {
-                let mut interpolate = false;
-                if c == '$' {
-                    self.scanner.next_char();
-                    interpolate = true;
-                }
+            } else if c == '$' {
+                self.scanner.next_char();
 
+                let next_loc = self.scanner.loc();
+                let next_c = self.scanner.peek_char()?;
+
+                if next_c == '"' {
+                    let interpolate = true;
+                    match self.next_str_literal(interpolate) {
+                        Ok(s) => s,
+                        Err(e) => return Some(Err(e)),
+                    }
+                } else if let Some(t) = self.next_multi_symbol_token('$') {
+                    t
+                } else {
+                    return Some(Err(LexError::Unexpected(next_loc, next_c)));
+                }
+            } else if c == '"' {
+                let interpolate = false;
                 match self.next_str_literal(interpolate) {
                     Ok(s) => s,
                     Err(e) => return Some(Err(e)),
@@ -560,6 +573,7 @@ fn match_double_symbol_token(a: char, b: char) -> Option<Token> {
 
 fn match_triple_symbol_token(a: char, b: char, c: char) -> Option<Token> {
     match (a, b, c) {
+        ('$', ':', '=') => Some(Token::DollarColonEquals),
         ('=', '=', '=') => Some(Token::EqualsEqualsEquals),
         ('!', '=', '=') => Some(Token::BangEqualsEquals),
 

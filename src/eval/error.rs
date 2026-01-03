@@ -28,6 +28,8 @@ pub enum Error {
     CannotCallNonFunc{v: Value},
     #[snafu(display("'{}' is not defined", name))]
     Undefined{name: String},
+    #[snafu(display("cannot assign to immutable value '{}'", name))]
+    AssignToConst{name: String},
     #[snafu(display("object property name isn't a variable"))]
     ObjectPropShorthandNotVar,
     #[snafu(display("cannot bind to {}", descr))]

@@ -85,7 +85,7 @@ Operation-assignments can be used as a shorthand for assigning the result of an
 operation to a variable:
 
 ```
-x := 1
+x $:= 1
 
 x += 2 # x = x + 2
 print(x) # 3
@@ -111,7 +111,7 @@ An operation-assignment can be used as a shorthand for assigning the result of
 concatenation to a variable:
 
 ```
-x := "Hello"
+x $:= "Hello"
 x += ", world!"
 print(x) # Hello, world!
 ```
@@ -136,7 +136,7 @@ An operation-assignment can be used as a shorthand for assigning the result of
 concatenation to a variable:
 
 ```
-x := [1, 2]
+x $:= [1, 2]
 x += [3, 4]
 print(x) # [1, 2, 3, 4]
 ```
@@ -204,14 +204,17 @@ print(4 .. 0) # []
 Variables
 ---------
 
-Variables must be declared with `:=` before they can be used. The location of
-the declaration defines the scope of the variable.
+Variables must be declared with `:=` or `$:=` before they can be used. The
+location of the declaration defines the scope of the variable. Variables
+declared using `:=` are immutable, and can be made mutable by declaring them
+with `$:=`.
 
 ```
 # Using `n` before this point will result in a "not defined" error.
-n := 1
+n $:= 1
 print(n) # 1
 
+# Assigning to `n` here would result in an error if `n` was declared with `:=`.
 n = 2
 print(n) # 2
 ```
@@ -221,14 +224,14 @@ in the closest surrounding scope, and declaring a variable with the same name as
 a variable defined in a surrounding scope will shadow the outer variable.
 
 ```
-n := 1
+n $:= 1
 {
     print(n) # 1
 
     n = 2
     print(n) # 2
 
-    n := 3
+    n $:= 3
     print(n) # 3
 
     n = 4
@@ -299,7 +302,7 @@ print({xs.., "c": 4}) # {"a": 1, "b": 2, "c": 4}
 `list`s, `string`s and `object`s can be indexed:
 
 ```
-xs := null
+xs $:= null
 
 xs = ["a", "b", "c"]
 print(xs[1]) # b
@@ -319,7 +322,7 @@ boundaries, so care should be taken when handling strings using UTF-8 encoding.
 `list`s and `object`s can assign to indices:
 
 ```
-xs := null
+xs $:= null
 
 xs = ["a", "b", "c"]
 xs[1] = "d"
@@ -355,13 +358,17 @@ The "collect" annotation can be used on the last item in a list destructure to
 capture all remaining items from the right-hand side:
 
 ```
-xs := [1, 2]
-[a, _, ..rest] := xs
+xs $:= [1, 2]
+[a, _, ..rest] $:= xs
 print(rest) # []
 xs = [1, 2, 3, 4]
 [a, _, ..rest] = xs
 print(rest) # [3, 4]
 ```
+
+Note that assignment to variables in a destructuring respect the mutability of
+the variable, so attempting to assign to an immutable variable in a
+destructuring will evaluate to an exception.
 
 ### Object properties
 
@@ -424,6 +431,10 @@ xs := {"a": 1, "b": 2, "c": 3, "d": 4}
 print(rest) # {"a": 1, "c": 3}
 ```
 
+Note that assignment to variables in a destructuring respect the mutability of
+the variable, so attempting to assign to an immutable variable in a
+destructuring will evaluate to an exception.
+
 ### Range-indexing
 
 `list`s and `string`s can be range-indexed:
@@ -478,7 +489,7 @@ if true {
 ### While loops
 
 ```
-i := 0
+i $:= 0
 while i < 3 {
     print(i)
     i += 1
@@ -489,7 +500,7 @@ print(i) # 3
 `break`s can be used to exit a loop early:
 
 ```
-i := 0
+i $:= 0
 while true {
     if i >= 3 {
         break
@@ -504,7 +515,7 @@ print(i) # 3
 `continue`s can be used to skip loop iterations:
 
 ```
-i := 0
+i $:= 0
 while i < 6 {
     i += 1
 
@@ -575,7 +586,7 @@ result:
 
 ```
 xs := {"a": 1}
-[v, ok] := ? xs["b"]
+[v, ok] $:= ? xs["b"]
 if !ok {
     v = "nothing"
 }
@@ -607,7 +618,7 @@ print(add(1, 2)) # 3
 Functions create a closure over the scope in which they're defined:
 
 ```
-v := 1
+v $:= 1
 fn inc_v() {
     v = v + 1
 }

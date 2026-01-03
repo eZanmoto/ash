@@ -1,4 +1,4 @@
-// Copyright 2025 Sean Kelleher. All rights reserved.
+// Copyright 2025-2026 Sean Kelleher. All rights reserved.
 // Use of this source code is governed by an MIT
 // licence that can be found in the LICENCE file.
 
@@ -15,6 +15,8 @@ use eval::EvaluationContext;
 use super::error::*;
 use super::error::Error;
 use super::scope;
+use super::scope::Error as ScopeError;
+use super::scope::Mutability;
 use super::scope::ScopeStack;
 use crate::lock_deref;
 use crate::value;
@@ -51,9 +53,10 @@ pub fn bind(
     bind_next(context, scopes, &mut HashSet::new(), lhs, rhs, None, bind_type)
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum BindType {
-    Declaration,
+    ConstDeclaration,
+    VarDeclaration,
     Assignment,
 }
 
@@ -359,14 +362,22 @@ fn bind_next_name(
     names_in_binding.insert(name.to_string());
 
     match bind_type {
-        BindType::Declaration => {
+        BindType::ConstDeclaration |
+        BindType::VarDeclaration => {
             if op.is_some() {
                 return new_loc_error(Error::Dev{
                     msg: "operation-assignment on declaration".to_string(),
                 });
             }
 
-            if let Err((line, col)) = scopes.declare(name, *name_loc, rhs) {
+            let m =
+                if bind_type == BindType::ConstDeclaration {
+                    Mutability::Const
+                } else {
+                    Mutability::Var
+                };
+
+            if let Err((line, col)) = scopes.declare(name, *name_loc, rhs, m) {
                 return new_loc_error(Error::AlreadyInScope{
                     name: name.to_string(),
                     prev_line: line,
@@ -374,6 +385,7 @@ fn bind_next_name(
                 });
             }
         },
+
         BindType::Assignment => {
             let mut rhs_val = rhs;
             if let Some((op, op_loc)) = op {
@@ -398,10 +410,20 @@ fn bind_next_name(
                 rhs_val = value::new_val_ref_with_no_source(raw_v);
             }
 
-            if !scopes.assign(name, rhs_val) {
-                return new_loc_error(Error::Undefined{
-                    name: name.to_string(),
-                });
+            if let Err(se) = scopes.assign(name, rhs_val) {
+                let e =
+                    match se {
+                        ScopeError::Const =>
+                            Error::AssignToConst{
+                                name: name.to_string(),
+                            },
+                        ScopeError::Undefined =>
+                            Error::Undefined{
+                                name: name.to_string(),
+                            },
+                    };
+
+                return new_loc_error(e);
             }
         },
     };

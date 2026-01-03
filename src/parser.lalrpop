@@ -1,4 +1,4 @@
-// Copyright 2025 Sean Kelleher. All rights reserved.
+// Copyright 2025-2026 Sean Kelleher. All rights reserved.
 // Use of this source code is governed by an MIT
 // licence that can be found in the LICENCE file.
 
@@ -37,8 +37,10 @@ pub RawStmt: Stmt = {
     <expr:Expr> =>
         Stmt::Expr{expr},
 
+    <lhs:Expr> "$:=" <rhs:Expr> =>
+        Stmt::Declare{lhs, rhs, typ: DeclarationType::Var},
     <lhs:Expr> ":=" <rhs:Expr> =>
-        Stmt::Declare{lhs, rhs},
+        Stmt::Declare{lhs, rhs, typ: DeclarationType::Const},
     <lhs:Expr> "=" <rhs:Expr> =>
         Stmt::Assign{lhs, rhs},
 
@@ -409,6 +411,7 @@ extern {
 
         ":=" => Token::ColonEquals,
 
+        "$:=" => Token::DollarColonEquals,
         "===" => Token::EqualsEqualsEquals,
         "!==" => Token::BangEqualsEquals,
     }

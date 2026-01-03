@@ -1,4 +1,4 @@
-// Copyright 2025 Sean Kelleher. All rights reserved.
+// Copyright 2025-2026 Sean Kelleher. All rights reserved.
 // Use of this source code is governed by an MIT
 // licence that can be found in the LICENCE file.
 
@@ -12,7 +12,19 @@ use crate::value::SourcedValue;
 #[derive(Clone, Debug)]
 pub struct ScopeStack(Vec<Arc<Mutex<Scope>>>);
 
-pub type Scope = HashMap<String, (SourcedValue, Location)>;
+pub type Scope = HashMap<String, (SourcedValue, Location, Mutability)>;
+
+#[derive(Debug, PartialEq)]
+pub enum Mutability {
+    Const,
+    Var,
+}
+
+#[derive(Debug)]
+pub enum Error {
+    Const,
+    Undefined,
+}
 
 impl ScopeStack {
     pub fn new(scopes: Vec<Arc<Mutex<Scope>>>) -> ScopeStack {
@@ -29,7 +41,13 @@ impl ScopeStack {
     // `declare` returns `Err` if `name` is already defined in the current
     // scope, and the `Err` will contain the location of the previous
     // definition.
-    pub fn declare(&mut self, name: &str, loc: Location, v: SourcedValue)
+    pub fn declare(
+        &mut self,
+        name: &str,
+        loc: Location,
+        v: SourcedValue,
+        m: Mutability,
+    )
         -> Result<(), Location>
     {
         let mut cur_scope =
@@ -38,11 +56,11 @@ impl ScopeStack {
                 .try_lock()
                 .unwrap();
 
-        if let Some((_, loc)) = cur_scope.get(name) {
+        if let Some((_, loc, _)) = cur_scope.get(name) {
             return Err(*loc);
         }
 
-        cur_scope.insert(name.to_string(), (v, loc));
+        cur_scope.insert(name.to_string(), (v, loc, m));
 
         Ok(())
     }
@@ -50,7 +68,7 @@ impl ScopeStack {
     pub fn get(&self, name: &String) -> Option<SourcedValue> {
         for scope in self.0.iter().rev() {
             let unlocked_scope = scope.try_lock().unwrap();
-            if let Some((v, _)) = unlocked_scope.get(name) {
+            if let Some((v, _, _)) = unlocked_scope.get(name) {
                 return Some(v.clone());
             }
         }
@@ -58,22 +76,29 @@ impl ScopeStack {
         None
     }
 
-    // `assign` replaces `name` in the topmost scope of this `ScopeStack` and
-    // returns `true`, or else it returns `false` if `name` wasn't found in
-    // this `ScopeStack`. `assign` returns an error if attempting to assign to
-    // a constant binding.
-    pub fn assign(&mut self, name: &str, v: SourcedValue) -> bool {
+    // `assign` replaces `name` in the topmost scope of this `ScopeStack`, or
+    // returns an error if `name` wasn't found in this `ScopeStack`, or if
+    // `name` refers to a variable defined as a constant.
+    pub fn assign(
+        &mut self,
+        name: &str,
+        v: SourcedValue
+    ) -> Result<(), Error> {
         for scope in self.0.iter().rev() {
             let mut unlocked_scope = scope.try_lock().unwrap();
 
-            if let Some((slot, _)) = unlocked_scope.get_mut(name) {
+            if let Some((slot, _, mutability)) = unlocked_scope.get_mut(name) {
+                if *mutability == Mutability::Const {
+                    return Err(Error::Const);
+                }
+
                 set(slot, v);
 
-                return true;
+                return Ok(());
             }
         }
 
-        false
+        Err(Error::Undefined)
     }
 }
 

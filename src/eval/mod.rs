@@ -124,7 +124,13 @@ pub fn eval_stmts(
     let mut new_scopes = scopes.new_from_push(HashMap::new());
 
     for (lhs, rhs) in new_bindings {
-        bind::bind(context, &mut new_scopes, &lhs, rhs, BindType::Declaration)
+        bind::bind(
+            context,
+            &mut new_scopes,
+            &lhs,
+            rhs,
+            BindType::VarDeclaration
+        )
             .context(BindFailed)?;
     }
 
@@ -180,11 +186,17 @@ fn eval_stmt(
                 .context(EvalExprFailed)?;
         },
 
-        Stmt::Declare{lhs, rhs} => {
+        Stmt::Declare{lhs, rhs, typ} => {
             let v = eval_expr(context, scopes, rhs)
                 .context(EvalDeclarationRhsFailed)?;
 
-            bind::bind(context, scopes, lhs, v, BindType::Declaration)
+            let bt =
+                match typ {
+                    DeclarationType::Const => BindType::ConstDeclaration,
+                    DeclarationType::Var => BindType::VarDeclaration,
+                };
+
+            bind::bind(context, scopes, lhs, v, bt)
                 .context(DeclarationBindFailed)?;
         },
 
@@ -299,7 +311,10 @@ fn eval_stmt(
                 closure,
             );
 
-            bind::bind_name(scopes, name, loc, func, BindType::Declaration)
+            // TODO It was considered whether function parameters should be
+            // bound as constant declarations. For now, the decision is to add
+            // a linting check for assignments to function parameters.
+            bind::bind_name(scopes, name, loc, func, BindType::VarDeclaration)
                 .context(DeclareFunctionFailed)?;
         },
 
