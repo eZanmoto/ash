@@ -1,6 +1,6 @@
 ================================================== prop_not_found
 xs := {"a": 1}
-[v, ok] := ? xs["a"]
+[v, ok] $:= ? xs["a"]
 if ok {
     print(v)
 } else {
@@ -28,7 +28,7 @@ if ok && v != 0 {
 nothing
 ================================================== shorthand_prop_not_found
 person := {"name": {}}
-[fname, ok] := ? person.name.first
+[fname, ok] $:= ? person.name.first
 if ok {
     print(fname)
 } else {

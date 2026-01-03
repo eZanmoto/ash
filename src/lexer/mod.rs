@@ -497,6 +497,7 @@ impl Iterator for Lexer<'_> {
                     Token::Comma |
                     Token::Div |
                     Token::DivEquals |
+                    Token::DollarColonEquals |
                     Token::Dot |
                     Token::Equals |
                     Token::EqualsEquals |
