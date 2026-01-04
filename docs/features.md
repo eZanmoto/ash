@@ -862,3 +862,24 @@ function namespace that is being referenced.
 #### `func`
 
 * `v::type()`: returns `"func"`
+
+### Chain operator
+
+The chain operator is the equivalent of the "pipe" operator (generally
+represented as `|>`) in a number of functional programming languages. When using
+the chain operator, the expression on the left of the operator is passed as the
+first argument to the function on the right of the operator:
+
+```
+fn add(a, b) {
+    return a + b
+}
+print(1->add(2)) # 3
+```
+
+This allows for a "pipeline", "chain" or "fluent" style for successive function
+calls:
+
+```
+print(1->add(2)->add(3)) # 6
+```

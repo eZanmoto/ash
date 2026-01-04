@@ -199,23 +199,37 @@ pub ExprPrecedence5: RawExpr = {
     <loc:@L> <expr:ExprPrecedence5> "(" <args:ArgList> ")" =>
         RawExpr::Call{func: Box::new((expr, loc)), args},
 
-    <loc:@L> <expr:ExprPrecedence5> "[" <locat:Expr> "]" =>
+    ExprPrecedence6
+}
+
+pub ExprPrecedence6: RawExpr = {
+    <arg_loc:@L> <arg:ExprPrecedence6>
+        "->" <func_loc:@L> <func:ExprPrecedence6>
+        "(" <mut args:ArgList> ")" => {
+
+        let first_arg = ListItem{expr: (arg, arg_loc), is_spread: false};
+        args.insert(0, first_arg);
+
+        RawExpr::Call{func: Box::new((func, func_loc)), args: args}
+    },
+
+    <loc:@L> <expr:ExprPrecedence6> "[" <locat:Expr> "]" =>
         RawExpr::Index{expr: Box::new((expr, loc)), location: Box::new(locat)},
 
-    <loc:@L> <expr:ExprPrecedence5> "[" <start:Expr?> ":" <end:Expr?> "]" =>
+    <loc:@L> <expr:ExprPrecedence6> "[" <start:Expr?> ":" <end:Expr?> "]" =>
         RawExpr::RangeIndex{
             expr: Box::new((expr, loc)),
             start: start.map(|v| Box::new(v)),
             end: end.map(|v| Box::new(v)),
         },
 
-    <loc:@L> <expr:ExprPrecedence5> "." <name:Ident> =>
+    <loc:@L> <expr:ExprPrecedence6> "." <name:Ident> =>
         RawExpr::Prop{expr: Box::new((expr, loc)), name, type_prop: false},
 
-    <loc:@L> <expr:ExprPrecedence5> "::" <name:Ident> =>
+    <loc:@L> <expr:ExprPrecedence6> "::" <name:Ident> =>
         RawExpr::Prop{expr: Box::new((expr, loc)), name, type_prop: true},
 
-    ExprPrecedence6
+    ExprPrecedence7
 }
 
 // NOTE `ArgList` is functionally equivalent to `ExprList`, but doesn't allow
@@ -246,7 +260,7 @@ pub ReverseArgList: Vec<ListItem> = {
     },
 }
 
-pub ExprPrecedence6: RawExpr = {
+pub ExprPrecedence7: RawExpr = {
     "null" => RawExpr::Null,
     "true" => RawExpr::Bool{b: true},
     "false" => RawExpr::Bool{b: false},
@@ -411,6 +425,7 @@ extern {
         "*=" => Token::MulEquals,
         "+=" => Token::SumEquals,
         "-=" => Token::SubEquals,
+        "->" => Token::DashGreaterThan,
         ".." => Token::DotDot,
         "/=" => Token::DivEquals,
         "::" => Token::ColonColon,
