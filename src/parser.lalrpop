@@ -212,7 +212,7 @@ pub ExprPrecedence5: RawExpr = {
     <loc:@L> <expr:ExprPrecedence5> "." <name:Ident> =>
         RawExpr::Prop{expr: Box::new((expr, loc)), name, type_prop: false},
 
-    <loc:@L> <expr:ExprPrecedence5> "->" <name:Ident> =>
+    <loc:@L> <expr:ExprPrecedence5> "::" <name:Ident> =>
         RawExpr::Prop{expr: Box::new((expr, loc)), name, type_prop: true},
 
     ExprPrecedence6
@@ -411,9 +411,9 @@ extern {
         "*=" => Token::MulEquals,
         "+=" => Token::SumEquals,
         "-=" => Token::SubEquals,
-        "->" => Token::DashGreaterThan,
         ".." => Token::DotDot,
         "/=" => Token::DivEquals,
+        "::" => Token::ColonColon,
         ":=" => Token::ColonEquals,
         "<=" => Token::LessThanEquals,
         "==" => Token::EqualsEquals,

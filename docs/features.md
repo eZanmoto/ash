@@ -832,7 +832,7 @@ type-based behaviour without conflicting with the user-defined namespace, the
 arrow operator is used to access type functions:
 
 ```
-print("abc"->len()) # 3
+print("abc"::len()) # 3
 ```
 
 In this context, the type of the value before the arrow operator defines the
@@ -840,25 +840,25 @@ function namespace that is being referenced.
 
 #### `bool`
 
-* `v->type()`: returns `"bool"`
+* `v::type()`: returns `"bool"`
 
 #### `int`
 
-* `v->type()`: returns `"int"`
+* `v::type()`: returns `"int"`
 
 #### `str`
 
-* `v->len()`: returns the length of `v`.
-* `v->type()`: returns `"string"`
+* `v::len()`: returns the length of `v`.
+* `v::type()`: returns `"string"`
 
 #### `list`
 
-* `v->type()`: returns `"list"`
+* `v::type()`: returns `"list"`
 
 #### `object`
 
-* `v->type()`: returns `"object"`
+* `v::type()`: returns `"object"`
 
 #### `func`
 
-* `v->type()`: returns `"func"`
+* `v::type()`: returns `"func"`

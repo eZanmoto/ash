@@ -470,20 +470,20 @@ f()
 runtime_errors/this_undefined.ash:2:5: in 'f': 'this' is not defined
 Stacktrace:
   runtime_errors/this_undefined.ash:4:1: in '<root>'
-================================================== type_method_bad_arglen
+================================================== type_function_bad_arglen
 exit_code: 103
 --------------------------------------------------
-""->len(1)
+""::len(1)
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/type_method_bad_arglen.ash:1:1: `len` only takes 0 arguments (got 1)
-================================================== type_method_undefined
+runtime_errors/type_function_bad_arglen.ash:1:1: `len` only takes 0 arguments (got 1)
+================================================== type_function_undefined
 exit_code: 103
 --------------------------------------------------
-""->not_defined()
+""::not_defined()
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/type_method_undefined.ash:1:1: there is no type function 'not_defined' for 'string'
+runtime_errors/type_function_undefined.ash:1:1: there is no type function 'not_defined' for 'string'
 ================================================== interp_slot_error
 exit_code: 103
 --------------------------------------------------

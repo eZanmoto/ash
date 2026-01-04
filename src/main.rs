@@ -256,8 +256,8 @@ fn render_token(t: Token) -> String {
 
         Token::AmpAmp => "&&".to_string(),
         Token::BangEquals => "!=".to_string(),
+        Token::ColonColon => "::".to_string(),
         Token::ColonEquals => ":=".to_string(),
-        Token::DashGreaterThan => "->".to_string(),
         Token::DivEquals => "/=".to_string(),
         Token::DollarBraceOpen => "${".to_string(),
         Token::DollarBracketOpen => "$[".to_string(),
