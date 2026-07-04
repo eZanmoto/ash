@@ -660,5 +660,19 @@ exit_code: 103
 throw {"name": 1}
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/throw_name_not_string_error.ash:1:7: error object names can only be strings, got 'int'
+runtime_errors/throw_name_not_string_error.ash:1:7: error object 'name' can only be a string, got 'int'
+================================================== throw_no_fn_error
+exit_code: 103
+--------------------------------------------------
+throw {"name": "my_error"}
+--------------------------------------------------
+--------------------------------------------------
+runtime_errors/throw_no_fn_error.ash:1:7: error object has no 'fn' property
+================================================== throw_fn_not_string_error
+exit_code: 103
+--------------------------------------------------
+throw {"name": "my_error", "fn": 1}
+--------------------------------------------------
+--------------------------------------------------
+runtime_errors/throw_fn_not_string_error.ash:1:7: error object 'fn' can only be a function, got 'int'
 ==================================================

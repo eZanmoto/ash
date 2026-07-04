@@ -6,5 +6,5 @@ fn f() {}
 throw f."my_error"
 --------------------------------------------------
 --------------------------------------------------
-uncaught_throws/basic.ash:{exception:my_error}
+uncaught_throws/basic.ash:{exception:f.my_error}
 ==================================================

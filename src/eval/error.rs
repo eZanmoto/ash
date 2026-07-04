@@ -7,9 +7,11 @@ use std::string::FromUtf8Error;
 
 use snafu::prelude::*;
 
-use crate::ast::UnaryOp;
 use crate::ast::BinaryOp;
+use crate::ast::UnaryOp;
 use crate::eval::Value;
+use crate::lock_deref;
+use crate::value::FuncRef;
 use crate::value::Str;
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -220,10 +222,17 @@ pub enum Error {
     #[snafu(display("error object has no 'name' property"))]
     InvalidErrorObjectNoName,
     #[snafu(display(
-        "error object names can only be strings, got '{}'",
+        "error object 'name' can only be a string, got '{}'",
         render_type(value),
     ))]
     InvalidErrorObjectNameNotString{value: Value},
+    #[snafu(display("error object has no 'fn' property"))]
+    InvalidErrorObjectNoFn,
+    #[snafu(display(
+        "error object 'fn' can only be a function, got '{}'",
+        render_type(value),
+    ))]
+    InvalidErrorObjectFnNotFunc{value: Value},
 
     #[snafu(display("{}", render_error_object(err_obj)))]
     UserDefined{err_obj: Object},
@@ -532,6 +541,7 @@ pub enum Error {
 #[derive(Clone, Debug)]
 pub struct Object {
     pub name: Str,
+    pub func: FuncRef,
 }
 
 pub fn render_type(v: &Value) -> String {
@@ -588,7 +598,7 @@ pub fn bin_op_symbol(op: &BinaryOp) -> String {
 }
 
 pub fn render_error_object(err_obj: &Object) -> String {
-    let Object{name} = err_obj;
+    let Object{name, func} = err_obj;
 
     let name =
         match String::from_utf8(name.clone()) {
@@ -596,5 +606,14 @@ pub fn render_error_object(err_obj: &Object) -> String {
             Err(_) => format!("invalid UTF-8 name {name:?}"),
         };
 
-    format!("{{exception:{name}}}")
+    let func = &lock_deref!(func);
+
+    let func_name =
+        if let Some(n) = &func.name {
+            n
+        } else {
+            "<anonymous function>"
+        };
+
+    format!("{{exception:{func_name}.{name}}}")
 }

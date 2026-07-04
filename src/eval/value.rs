@@ -64,7 +64,7 @@ pub enum Value {
     Object{props: ObjectRef, is_mutable: bool},
 
     BuiltinFunc{name: String, f: BuiltinFunc},
-    Func(Arc<Mutex<Func>>),
+    Func(FuncRef),
 }
 
 pub type Str = Vec<u8>;
@@ -82,6 +82,8 @@ pub type Object = BTreeMap<String, SourcedValue>;
 
 pub type BuiltinFunc =
     fn(Option<SourcedValue>, Vec<SourcedValue>) -> Result<SourcedValue>;
+
+pub type FuncRef = Arc<Mutex<Func>>;
 
 #[derive(Clone, Debug)]
 pub struct Func {

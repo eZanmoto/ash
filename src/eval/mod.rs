@@ -1515,10 +1515,29 @@ fn eval_expr_to_error_object(
                     });
                 };
 
+            let SourcedValue{v: func_value, ..} =
+                if let Some(v) = props_val.get("fn") {
+                    v
+                } else {
+                    return new_loc_err(Error::InvalidErrorObjectNoFn);
+                };
+
+            let func =
+                if let Value::Func(n) = func_value {
+                    n
+                } else {
+                    return new_loc_err(Error::InvalidErrorObjectFnNotFunc{
+                        value: func_value.clone(),
+                    });
+                };
+
             // TODO Consider the tradeoff between just creating a new reference
             // to the original object compared to the approach here where the
             // fields are copied to a new object.
-            Ok(error::Object{name: name.clone()})
+            Ok(error::Object{
+                name: name.clone(),
+                func: func.clone(),
+            })
         },
 
         value =>
