@@ -219,6 +219,11 @@ pub enum Error {
     ItemSpreadInParamList,
     #[snafu(display("error object has no 'name' property"))]
     InvalidErrorObjectNoName,
+    #[snafu(display(
+        "error object names can only be strings, got '{}'",
+        render_type(value),
+    ))]
+    InvalidErrorObjectNameNotString{value: Value},
 
     #[snafu(display("user-defined error"))]
     UserDefined{object: ObjectRef},

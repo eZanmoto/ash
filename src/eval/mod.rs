@@ -1501,14 +1501,21 @@ fn eval_expr_to_error_object(
         Value::Object{ref props, ..} => {
             let props_val = &lock_deref!(props);
 
-            let _name =
+            let SourcedValue{v: name, ..} =
                 if let Some(v) = props_val.get("name") {
                     v
                 } else {
                     return new_loc_err(Error::InvalidErrorObjectNoName);
                 };
 
-            // TODO Verify that `_name` is `string`.
+            match name {
+                Value::Str(_) => {},
+                _ => {
+                    return new_loc_err(Error::InvalidErrorObjectNameNotString{
+                        value: name.clone(),
+                    });
+                }
+            }
 
             Ok(props.clone())
         },

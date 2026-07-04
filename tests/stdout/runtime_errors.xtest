@@ -654,4 +654,11 @@ throw {}
 --------------------------------------------------
 --------------------------------------------------
 runtime_errors/throw_no_name_error.ash:1:7: error object has no 'name' property
+================================================== throw_name_not_string_error
+exit_code: 103
+--------------------------------------------------
+throw {"name": 1}
+--------------------------------------------------
+--------------------------------------------------
+runtime_errors/throw_name_not_string_error.ash:1:7: error object names can only be strings, got 'int'
 ==================================================
