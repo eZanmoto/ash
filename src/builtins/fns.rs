@@ -96,7 +96,11 @@ fn render(v: &SourcedValue) -> Result<String> {
         Value::Func(f) => {
             let Func{name, ..} = &lock_deref!(f);
 
-            s += &format!("<function '{name:?}'>");
+            if let Some(n) = name {
+                s += &format!("<function '{n}'>");
+            } else {
+                s += "<anonymous function>";
+            }
         },
     }
 

@@ -226,6 +226,39 @@ pub ExprPrecedence6: RawExpr = {
     <loc:@L> <expr:ExprPrecedence6> "." <name:Ident> =>
         RawExpr::Prop{expr: Box::new((expr, loc)), name, type_prop: false},
 
+    <fn_loc:@L> <fn_expr:ExprPrecedence6> "."
+        <name_loc:@L> <name:StrLiteral> => {
+
+        RawExpr::Object{
+            props: vec![
+                PropItem::Pair{
+                    name: (
+                        RawExpr::Str{
+                            s: "name".to_string(),
+                            interpolation_slots: None,
+                        },
+                        name_loc,
+                    ),
+                    value: (
+                        RawExpr::Str{s: name, interpolation_slots: None},
+                        name_loc,
+                    ),
+                },
+                PropItem::Pair{
+                    name: (
+                        RawExpr::Str{
+                            s: "fn".to_string(),
+                            interpolation_slots: None,
+                        },
+                        name_loc,
+                    ),
+                    value: (fn_expr, fn_loc),
+                },
+            ],
+            is_mutable: false,
+        }
+    },
+
     <loc:@L> <expr:ExprPrecedence6> "::" <name:Ident> =>
         RawExpr::Prop{expr: Box::new((expr, loc)), name, type_prop: true},
 
