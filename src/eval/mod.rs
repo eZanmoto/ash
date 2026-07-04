@@ -31,6 +31,7 @@ use self::builtins::Builtins;
 #[allow(clippy::wildcard_imports)]
 use self::error::*;
 use self::error::Error;
+use self::error::Object as ErrorObject;
 use self::scope::Mutability;
 use self::scope::ScopeStack;
 use self::value::BuiltinFunc;
@@ -38,7 +39,6 @@ use self::value::Func;
 use self::value::ListRef;
 use self::value::SourcedValue;
 use self::value::Str;
-use self::value::ObjectRef;
 use self::value::Value;
 
 use crate::lexer::Lexer;
@@ -329,16 +329,14 @@ fn eval_stmt(
         },
 
         Stmt::Throw{expr} => {
-            let error_object = eval_expr_to_error_object(
+            let err_obj = eval_expr_to_error_object(
                 context,
                 scopes,
                 expr,
             )
                 .context(EvalThrowExprFailed)?;
 
-            return Err(Error::UserDefined{
-                object: error_object,
-            })
+            return Err(Error::UserDefined{err_obj})
         },
     }
 
@@ -1490,7 +1488,7 @@ fn eval_expr_to_error_object(
     scopes: &mut ScopeStack,
     expr: &Expr,
 )
-    -> Result<ObjectRef>
+    -> Result<ErrorObject>
 {
     let (_, (line, col)) = expr;
     let new_loc_err = |source| {
@@ -1501,23 +1499,26 @@ fn eval_expr_to_error_object(
         Value::Object{ref props, ..} => {
             let props_val = &lock_deref!(props);
 
-            let SourcedValue{v: name, ..} =
+            let SourcedValue{v: name_value, ..} =
                 if let Some(v) = props_val.get("name") {
                     v
                 } else {
                     return new_loc_err(Error::InvalidErrorObjectNoName);
                 };
 
-            match name {
-                Value::Str(_) => {},
-                _ => {
+            let name =
+                if let Value::Str(n) = name_value {
+                    n
+                } else {
                     return new_loc_err(Error::InvalidErrorObjectNameNotString{
-                        value: name.clone(),
+                        value: name_value.clone(),
                     });
-                }
-            }
+                };
 
-            Ok(props.clone())
+            // TODO Consider the tradeoff between just creating a new reference
+            // to the original object compared to the approach here where the
+            // fields are copied to a new object.
+            Ok(error::Object{name: name.clone()})
         },
 
         value =>

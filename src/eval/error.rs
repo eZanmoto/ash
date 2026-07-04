@@ -10,7 +10,7 @@ use snafu::prelude::*;
 use crate::ast::UnaryOp;
 use crate::ast::BinaryOp;
 use crate::eval::Value;
-use crate::value::ObjectRef;
+use crate::value::Str;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -225,8 +225,8 @@ pub enum Error {
     ))]
     InvalidErrorObjectNameNotString{value: Value},
 
-    #[snafu(display("user-defined error"))]
-    UserDefined{object: ObjectRef},
+    #[snafu(display("{}", render_error_object(err_obj)))]
+    UserDefined{err_obj: Object},
 
     #[snafu(display("{}", msg))]
     BuiltinFuncErr{msg: String},
@@ -529,6 +529,11 @@ pub enum Error {
     },
 }
 
+#[derive(Clone, Debug)]
+pub struct Object {
+    pub name: Str,
+}
+
 pub fn render_type(v: &Value) -> String {
     let s =
         match v {
@@ -580,4 +585,16 @@ pub fn bin_op_symbol(op: &BinaryOp) -> String {
         };
 
     s.to_string()
+}
+
+pub fn render_error_object(err_obj: &Object) -> String {
+    let Object{name} = err_obj;
+
+    let name =
+        match String::from_utf8(name.clone()) {
+            Ok(n) => n,
+            Err(_) => format!("invalid UTF-8 name {name:?}"),
+        };
+
+    format!("{{exception:{name}}}")
 }
