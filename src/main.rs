@@ -330,6 +330,7 @@ fn eval_err_to_stacktrace(path: &Path, func: Option<&str>, error: EvalError)
         EvalError::ApplyBoolOpFailed{source} |
         EvalError::ApplyBinOpFailed{source} |
         EvalError::BinOpAssignListIndexFailed{source} |
+        EvalError::EvalReturnExprFailed{source} |
         EvalError::BinOpAssignObjectIndexFailed{source} |
         EvalError::BinOpAssignPropFailed{source} |
         EvalError::EvalListItemsFailed{source} |
