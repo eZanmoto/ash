@@ -230,6 +230,7 @@ fn render_token(t: Token) -> String {
         Token::In => "`in`".to_string(),
         Token::Null => "`null`".to_string(),
         Token::Return => "`return`".to_string(),
+        Token::Throw => "`throw`".to_string(),
         Token::True => "`true`".to_string(),
         Token::While => "`while`".to_string(),
 
@@ -321,6 +322,7 @@ fn eval_err_to_stacktrace(path: &Path, func: Option<&str>, error: EvalError)
         EvalError::EvalForStatementsFailed{source} |
         EvalError::ValidateArgsFailed{source} |
         EvalError::DeclareFunctionFailed{source} |
+        EvalError::EvalThrowExprFailed{source} |
         EvalError::EvalBlockFailed{source} |
         EvalError::EvalStmtFailed{source} |
         EvalError::EvalBinOpLhsFailed{source} |

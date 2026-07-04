@@ -10,6 +10,7 @@ use snafu::prelude::*;
 use crate::ast::UnaryOp;
 use crate::ast::BinaryOp;
 use crate::eval::Value;
+use crate::value::ObjectRef;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -216,6 +217,11 @@ pub enum Error {
     PropSpreadInParamList,
     #[snafu(display("can't use spread operator in parameter list"))]
     ItemSpreadInParamList,
+    #[snafu(display("error object has no 'name' property"))]
+    InvalidErrorObjectNoName,
+
+    #[snafu(display("user-defined error"))]
+    UserDefined{object: ObjectRef},
 
     #[snafu(display("{}", msg))]
     BuiltinFuncErr{msg: String},
@@ -340,6 +346,10 @@ pub enum Error {
         source: Box<Error>,
     },
     EvalReturnExprFailed{
+        #[snafu(source(from(Error, Box::new)))]
+        source: Box<Error>,
+    },
+    EvalThrowExprFailed{
         #[snafu(source(from(Error, Box::new)))]
         source: Box<Error>,
     },

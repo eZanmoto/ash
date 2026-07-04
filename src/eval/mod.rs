@@ -38,6 +38,7 @@ use self::value::Func;
 use self::value::ListRef;
 use self::value::SourcedValue;
 use self::value::Str;
+use self::value::ObjectRef;
 use self::value::Value;
 
 use crate::lexer::Lexer;
@@ -325,6 +326,19 @@ fn eval_stmt(
                 .context(EvalReturnExprFailed)?;
 
             return Ok(Escape::Return{value: v, loc: *loc});
+        },
+
+        Stmt::Throw{expr} => {
+            let error_object = eval_expr_to_error_object(
+                context,
+                scopes,
+                expr,
+            )
+                .context(EvalThrowExprFailed)?;
+
+            return Err(Error::UserDefined{
+                object: error_object,
+            })
         },
     }
 
@@ -1469,6 +1483,43 @@ fn eval_expr_to_index(
         .context(CastFailed)?;
 
     Ok(i)
+}
+
+fn eval_expr_to_error_object(
+    context: &EvaluationContext,
+    scopes: &mut ScopeStack,
+    expr: &Expr,
+)
+    -> Result<ObjectRef>
+{
+    let (_, (line, col)) = expr;
+    let new_loc_err = |source| {
+        Err(Error::AtLoc{source: Box::new(source), line: *line, col: *col})
+    };
+
+    match_eval_expr!((context, scopes, expr) {
+        Value::Object{ref props, ..} => {
+            let props_val = &lock_deref!(props);
+
+            let _name =
+                if let Some(v) = props_val.get("name") {
+                    v
+                } else {
+                    return new_loc_err(Error::InvalidErrorObjectNoName);
+                };
+
+            // TODO Verify that `_name` is `string`.
+
+            Ok(props.clone())
+        },
+
+        value =>
+            new_loc_err(Error::IncorrectType{
+                descr: "error object".to_string(),
+                exp_type: "object".to_string(),
+                value,
+            }),
+    })
 }
 
 fn get_str_range_index(

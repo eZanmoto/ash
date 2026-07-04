@@ -77,6 +77,9 @@ pub RawStmt: Stmt = {
     },
     <loc:@L> "return" <expr:Expr> =>
         Stmt::Return{loc, expr},
+
+    "throw" <expr:Expr> =>
+        Stmt::Throw{expr},
 }
 
 pub ParamList: (Vec<Expr>, bool) = {
@@ -427,6 +430,7 @@ extern {
         "in" => Token::In,
         "null" => Token::Null,
         "return" => Token::Return,
+        "throw" => Token::Throw,
         "true" => Token::True,
         "while" => Token::While,
 

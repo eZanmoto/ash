@@ -27,6 +27,7 @@ pub enum Token {
     In,
     Null,
     Return,
+    Throw,
     True,
     While,
 
@@ -142,6 +143,7 @@ impl<'input> Lexer<'input> {
             "in" => Token::In,
             "null" => Token::Null,
             "return" => Token::Return,
+            "throw" => Token::Throw,
             "true" => Token::True,
             "while" => Token::While,
 

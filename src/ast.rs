@@ -38,6 +38,8 @@ pub enum Stmt {
         stmts: Block,
     },
     Return{loc: Location, expr: Expr},
+
+    Throw{expr: Expr},
 }
 
 #[derive(Clone,Debug)]
