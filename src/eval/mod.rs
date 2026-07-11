@@ -31,7 +31,6 @@ use self::builtins::Builtins;
 #[allow(clippy::wildcard_imports)]
 use self::error::*;
 use self::error::Error;
-use self::error::Object as ErrorObject;
 use self::scope::Mutability;
 use self::scope::ScopeStack;
 use self::value::BuiltinFunc;
@@ -329,14 +328,14 @@ fn eval_stmt(
         },
 
         Stmt::Throw{expr} => {
-            let err_obj = eval_expr_to_error_object(
+            let err_obj = eval_expr_to_runtime_error(
                 context,
                 scopes,
                 expr,
             )
                 .context(EvalThrowExprFailed)?;
 
-            return Err(Error::UserDefined{err_obj})
+            return Err(err_obj)
         },
     }
 
@@ -1483,12 +1482,12 @@ fn eval_expr_to_index(
     Ok(i)
 }
 
-fn eval_expr_to_error_object(
+fn eval_expr_to_runtime_error(
     context: &EvaluationContext,
     scopes: &mut ScopeStack,
     expr: &Expr,
 )
-    -> Result<ErrorObject>
+    -> Result<Error>
 {
     let (_, (line, col)) = expr;
     let new_loc_err = |source| {
@@ -1496,54 +1495,20 @@ fn eval_expr_to_error_object(
     };
 
     match_eval_expr!((context, scopes, expr) {
-        Value::Object{ref props, ..} => {
-            let props_val = &lock_deref!(props);
-
-            let SourcedValue{v: code_value, ..} =
-                if let Some(v) = props_val.get("code") {
-                    v
-                } else {
-                    return new_loc_err(Error::InvalidErrorObjectNoCode);
+        Value::Str(msg) => {
+            let msg =
+                match String::from_utf8(msg.clone()) {
+                    Ok(n) => n,
+                    Err(_) => format!("invalid UTF-8 for message {msg:?}"),
                 };
 
-            let code =
-                if let Value::Str(n) = code_value {
-                    n
-                } else {
-                    return new_loc_err(Error::InvalidErrorObjectCodeNotString{
-                        value: code_value.clone(),
-                    });
-                };
-
-            let SourcedValue{v: func_value, ..} =
-                if let Some(v) = props_val.get("fn") {
-                    v
-                } else {
-                    return new_loc_err(Error::InvalidErrorObjectNoFn);
-                };
-
-            let func =
-                if let Value::Func(n) = func_value {
-                    n
-                } else {
-                    return new_loc_err(Error::InvalidErrorObjectFnNotFunc{
-                        value: func_value.clone(),
-                    });
-                };
-
-            // TODO Consider the tradeoff between just creating a new reference
-            // to the original object compared to the approach here where the
-            // fields are copied to a new object.
-            Ok(error::Object{
-                code: code.clone(),
-                func: func.clone(),
-            })
+            Ok(Error::Runtime{msg})
         },
 
         value =>
             new_loc_err(Error::IncorrectType{
                 descr: "error object".to_string(),
-                exp_type: "object".to_string(),
+                exp_type: "string".to_string(),
                 value,
             }),
     })

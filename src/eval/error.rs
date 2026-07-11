@@ -10,9 +10,6 @@ use snafu::prelude::*;
 use crate::ast::BinaryOp;
 use crate::ast::UnaryOp;
 use crate::eval::Value;
-use crate::lock_deref;
-use crate::value::FuncRef;
-use crate::value::Str;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -233,9 +230,6 @@ pub enum Error {
         render_type(value),
     ))]
     InvalidErrorObjectFnNotFunc{value: Value},
-
-    #[snafu(display("{}", render_error_object(err_obj)))]
-    UserDefined{err_obj: Object},
 
     #[snafu(display("{}", msg))]
     BuiltinFuncErr{msg: String},
@@ -538,12 +532,6 @@ pub enum Error {
     },
 }
 
-#[derive(Clone, Debug)]
-pub struct Object {
-    pub code: Str,
-    pub func: FuncRef,
-}
-
 pub fn render_type(v: &Value) -> String {
     let s =
         match v {
@@ -595,25 +583,4 @@ pub fn bin_op_symbol(op: &BinaryOp) -> String {
         };
 
     s.to_string()
-}
-
-pub fn render_error_object(err_obj: &Object) -> String {
-    let Object{code, func} = err_obj;
-
-    let code =
-        match String::from_utf8(code.clone()) {
-            Ok(n) => n,
-            Err(_) => format!("invalid UTF-8 for code {code:?}"),
-        };
-
-    let func = &lock_deref!(func);
-
-    let func_name =
-        if let Some(n) = &func.name {
-            n
-        } else {
-            "<anonymous function>"
-        };
-
-    format!("{{exception:{func_name}.{code}}}")
 }
