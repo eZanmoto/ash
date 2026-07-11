@@ -163,6 +163,48 @@ print([[1, 2], [3]] == [[1], [2, 3]])
 --------------------------------------------------
 true
 false
+================================================== null_equality
+print(null == true)
+print(null == 1)
+print(null == "a")
+print(null == [])
+print(null == {})
+print(null != true)
+print(null != 1)
+print(null != "a")
+print(null != [])
+print(null != {})
+print( true == null)
+print( 1 == null)
+print( "a" == null)
+print( [] == null)
+print( {} == null)
+print( true != null)
+print( 1 != null)
+print( "a" != null)
+print( [] != null)
+print( {} != null)
+--------------------------------------------------
+false
+false
+false
+false
+false
+true
+true
+true
+true
+true
+false
+false
+false
+false
+false
+true
+true
+true
+true
+true
 ================================================== object_equality
 print({} == {})
 print({} == {"a": 1})

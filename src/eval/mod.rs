@@ -1267,6 +1267,9 @@ fn eq(lhs: &Value, rhs: &Value) -> StdResult<bool, (String, String, String)> {
         (Value::Null, Value::Null) =>
             Ok(true),
 
+        (Value::Null, _) | (_, Value::Null) =>
+            Ok(false),
+
         (Value::Bool(a), Value::Bool(b)) =>
             Ok(a == b),
 
