@@ -163,6 +163,9 @@ pub ExprPrecedence1: RawExpr = {
     <loc:@L> "?" <expr:ExprPrecedence2> =>
         RawExpr::CatchAsBool{expr: Box::new((expr, loc))},
 
+    <loc:@L> "??" <expr:ExprPrecedence2> =>
+        RawExpr::CatchAsError{expr: Box::new((expr, loc))},
+
     ExprPrecedence2
 }
 
@@ -437,6 +440,7 @@ extern {
         "<=" => Token::LessThanEquals,
         "==" => Token::EqualsEquals,
         ">=" => Token::GreaterThanEquals,
+        "??" => Token::QuestionQuestion,
         "||" => Token::PipePipe,
 
         "!==" => Token::BangEqualsEquals,

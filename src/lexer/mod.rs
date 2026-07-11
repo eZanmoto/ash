@@ -67,6 +67,7 @@ pub enum Token {
     ModEquals,
     MulEquals,
     PipePipe,
+    QuestionQuestion,
     SubEquals,
     SumEquals,
 
@@ -576,6 +577,7 @@ fn match_double_symbol_token(a: char, b: char) -> Option<Token> {
         ('<', '=') => Some(Token::LessThanEquals),
         ('=', '=') => Some(Token::EqualsEquals),
         ('>', '=') => Some(Token::GreaterThanEquals),
+        ('?', '?') => Some(Token::QuestionQuestion),
         ('|', '|') => Some(Token::PipePipe),
 
         _ => None,

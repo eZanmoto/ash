@@ -498,6 +498,10 @@ pub enum Error {
         #[snafu(source(from(Error, Box::new)))]
         source: Box<Error>,
     },
+    EvalCatchAsErrorFailed{
+        #[snafu(source(from(Error, Box::new)))]
+        source: Box<Error>,
+    },
     EvalExprFailed{
         #[snafu(source(from(Error, Box::new)))]
         source: Box<Error>,

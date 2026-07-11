@@ -270,6 +270,7 @@ fn render_token(t: Token) -> String {
         Token::ModEquals => "%=".to_string(),
         Token::MulEquals => "*=".to_string(),
         Token::PipePipe => "||".to_string(),
+        Token::QuestionQuestion => "??".to_string(),
         Token::SubEquals => "-=".to_string(),
         Token::SumEquals => "+=".to_string(),
 

@@ -100,6 +100,7 @@ pub enum RawExpr {
     Call{func: Box<Expr>, args: Vec<ListItem>},
 
     CatchAsBool{expr: Box<Expr>},
+    CatchAsError{expr: Box<Expr>},
 }
 
 #[derive(Clone, Debug)]

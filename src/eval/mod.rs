@@ -427,6 +427,8 @@ fn validate_args(args: &[Expr]) -> Result<()> {
                 return new_invalid_bind_error("a function call"),
             RawExpr::CatchAsBool{..} =>
                 return new_invalid_bind_error("a boolean catch"),
+            RawExpr::CatchAsError{..} =>
+                return new_invalid_bind_error("an error catch"),
         }
     }
 
@@ -944,7 +946,43 @@ fn eval_expr(
                 &Mutability::Const,
             ))
         },
+
+        RawExpr::CatchAsError{expr} => {
+            let (maybe_value, maybe_err) =
+                match eval_expr(context, scopes, expr) {
+                    Ok(v) => {
+                        (v, value::new_null())
+                    },
+                    Err(err) => {
+                        let e = root_error(&err);
+                        if let Error::Runtime{msg} = e {
+                            (value::new_null(), new_error_object(msg))
+                        } else {
+                            return Err(Error::EvalCatchAsErrorFailed{
+                                source: Box::new(err),
+                            });
+                        }
+                    },
+                };
+
+            Ok(value::new_list(
+                vec![maybe_value, maybe_err],
+                &Mutability::Const,
+            ))
+        },
     }
+}
+
+fn new_error_object(msg: &str) -> SourcedValue {
+    value::new_object(
+        BTreeMap::<String, SourcedValue>::from_iter(vec![
+            (
+                "msg".to_string(),
+                value::new_str_from_string(msg.to_string()),
+            ),
+        ]),
+        &Mutability::Const,
+    )
 }
 
 // `root_error` recursively follows the `source` chain of `err` and returns the

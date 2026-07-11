@@ -319,6 +319,8 @@ pub fn bind_next(
             new_invalid_bind_error("a function call"),
         RawExpr::CatchAsBool{..} =>
             new_invalid_bind_error("a boolean catch"),
+        RawExpr::CatchAsError{..} =>
+            new_invalid_bind_error("an error catch"),
     }
 }
 

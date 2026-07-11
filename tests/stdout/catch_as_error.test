@@ -1,0 +1,139 @@
+================================================== prop_not_found
+xs := {"a": 1}
+[v, err] $:= ?? xs["a"]
+if err == null {
+    print(v)
+} else {
+    print($"nothing: ${err.msg}")
+}
+
+[v, err] = ?? xs["b"]
+if err == null {
+    print(v)
+} else {
+    print($"nothing: ${err.msg}")
+}
+--------------------------------------------------
+1
+nothing: object doesn't contain property 'b'
+================================================== prop_not_found_and
+xs := {}
+[v, err] := ?? xs["b"]
+if err == null && v != 0 {
+    print(v)
+} else {
+    print($"nothing: ${err.msg}")
+}
+--------------------------------------------------
+nothing: object doesn't contain property 'b'
+================================================== shorthand_prop_not_found
+person := {"name": ${}}
+[fname, err] $:= ?? person.name.first
+if err == null {
+    print(fname)
+} else {
+    print($"nothing: ${err.msg}")
+}
+
+person.name.first := "Jo"
+[fname, err] = ?? person.name.first
+if err == null {
+    print(fname)
+} else {
+    print($"nothing: ${err.msg}")
+}
+--------------------------------------------------
+nothing: object doesn't contain property 'first'
+Jo
+================================================== eq_type_mismatch
+a := 1
+b := "2"
+
+[is_eq, err] := ?? a == b
+if err == null {
+    if is_eq {
+        print("equal")
+    } else {
+        print("not equal (same type)")
+    }
+} else {
+    print("not equal (different types)")
+}
+--------------------------------------------------
+not equal (different types)
+================================================== out_of_str_bounds
+xs := "abc"
+
+[c, err] := ?? xs[5]
+if err == null {
+    print(c)
+} else {
+    print($"nothing: ${err.msg}")
+}
+--------------------------------------------------
+nothing: index '5' is outside the string bounds
+================================================== out_of_list_bounds
+xs := [1, 2, 3]
+
+[c, err] := ?? xs[5]
+if err == null {
+    print(c)
+} else {
+    print($"nothing: ${err.msg}")
+}
+--------------------------------------------------
+nothing: index '5' is outside the list bounds
+================================================== int_overflow
+x := 9_223_372_036_854_775_807
+
+[v, err] := ?? x + 1
+if err == null {
+    print(c)
+} else {
+    print("overflow")
+}
+--------------------------------------------------
+overflow
+================================================== runtime_error
+fn f() {
+    throw "my error"
+}
+
+[_, err] := ?? f()
+if err == null {
+    print("ok")
+} else {
+    print($"error: ${err.msg}")
+}
+--------------------------------------------------
+error: my error
+================================================== no_runtime_error
+fn f() {
+}
+
+[_, err] := ?? f()
+if err == null {
+    print("ok")
+} else {
+    print($"error: ${err.msg}")
+}
+--------------------------------------------------
+ok
+================================================== two_level_exception
+fn g() {
+    f()
+}
+
+fn f() {
+    throw "my error"
+}
+
+[_, err] := ?? g()
+if err == null {
+    print("ok")
+} else {
+    print($"error: ${err.msg}")
+}
+--------------------------------------------------
+error: my error
+==================================================
