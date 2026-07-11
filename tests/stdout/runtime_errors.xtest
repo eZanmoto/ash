@@ -647,31 +647,31 @@ xs[2] = 1
 --------------------------------------------------
 --------------------------------------------------
 runtime_errors/range_mutability.ash:2:1: this list is not mutable
-================================================== throw_no_name_error
+================================================== throw_no_code_error
 exit_code: 103
 --------------------------------------------------
 throw {}
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/throw_no_name_error.ash:1:7: error object has no 'name' property
-================================================== throw_name_not_string_error
+runtime_errors/throw_no_code_error.ash:1:7: error object has no 'code' property
+================================================== throw_code_not_string_error
 exit_code: 103
 --------------------------------------------------
-throw {"name": 1}
+throw {"code": 1}
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/throw_name_not_string_error.ash:1:7: error object 'name' can only be a string, got 'int'
+runtime_errors/throw_code_not_string_error.ash:1:7: error object 'code' can only be a string, got 'int'
 ================================================== throw_no_fn_error
 exit_code: 103
 --------------------------------------------------
-throw {"name": "my_error"}
+throw {"code": "my_error"}
 --------------------------------------------------
 --------------------------------------------------
 runtime_errors/throw_no_fn_error.ash:1:7: error object has no 'fn' property
 ================================================== throw_fn_not_string_error
 exit_code: 103
 --------------------------------------------------
-throw {"name": "my_error", "fn": 1}
+throw {"code": "my_error", "fn": 1}
 --------------------------------------------------
 --------------------------------------------------
 runtime_errors/throw_fn_not_string_error.ash:1:7: error object 'fn' can only be a function, got 'int'

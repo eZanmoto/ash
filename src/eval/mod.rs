@@ -1499,19 +1499,19 @@ fn eval_expr_to_error_object(
         Value::Object{ref props, ..} => {
             let props_val = &lock_deref!(props);
 
-            let SourcedValue{v: name_value, ..} =
-                if let Some(v) = props_val.get("name") {
+            let SourcedValue{v: code_value, ..} =
+                if let Some(v) = props_val.get("code") {
                     v
                 } else {
-                    return new_loc_err(Error::InvalidErrorObjectNoName);
+                    return new_loc_err(Error::InvalidErrorObjectNoCode);
                 };
 
-            let name =
-                if let Value::Str(n) = name_value {
+            let code =
+                if let Value::Str(n) = code_value {
                     n
                 } else {
-                    return new_loc_err(Error::InvalidErrorObjectNameNotString{
-                        value: name_value.clone(),
+                    return new_loc_err(Error::InvalidErrorObjectCodeNotString{
+                        value: code_value.clone(),
                     });
                 };
 
@@ -1535,7 +1535,7 @@ fn eval_expr_to_error_object(
             // to the original object compared to the approach here where the
             // fields are copied to a new object.
             Ok(error::Object{
-                name: name.clone(),
+                code: code.clone(),
                 func: func.clone(),
             })
         },

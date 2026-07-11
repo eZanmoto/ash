@@ -219,13 +219,13 @@ pub enum Error {
     PropSpreadInParamList,
     #[snafu(display("can't use spread operator in parameter list"))]
     ItemSpreadInParamList,
-    #[snafu(display("error object has no 'name' property"))]
-    InvalidErrorObjectNoName,
+    #[snafu(display("error object has no 'code' property"))]
+    InvalidErrorObjectNoCode,
     #[snafu(display(
-        "error object 'name' can only be a string, got '{}'",
+        "error object 'code' can only be a string, got '{}'",
         render_type(value),
     ))]
-    InvalidErrorObjectNameNotString{value: Value},
+    InvalidErrorObjectCodeNotString{value: Value},
     #[snafu(display("error object has no 'fn' property"))]
     InvalidErrorObjectNoFn,
     #[snafu(display(
@@ -540,7 +540,7 @@ pub enum Error {
 
 #[derive(Clone, Debug)]
 pub struct Object {
-    pub name: Str,
+    pub code: Str,
     pub func: FuncRef,
 }
 
@@ -598,12 +598,12 @@ pub fn bin_op_symbol(op: &BinaryOp) -> String {
 }
 
 pub fn render_error_object(err_obj: &Object) -> String {
-    let Object{name, func} = err_obj;
+    let Object{code, func} = err_obj;
 
-    let name =
-        match String::from_utf8(name.clone()) {
+    let code =
+        match String::from_utf8(code.clone()) {
             Ok(n) => n,
-            Err(_) => format!("invalid UTF-8 name {name:?}"),
+            Err(_) => format!("invalid UTF-8 for code {code:?}"),
         };
 
     let func = &lock_deref!(func);
@@ -615,5 +615,5 @@ pub fn render_error_object(err_obj: &Object) -> String {
             "<anonymous function>"
         };
 
-    format!("{{exception:{func_name}.{name}}}")
+    format!("{{exception:{func_name}.{code}}}")
 }

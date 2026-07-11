@@ -230,21 +230,21 @@ pub ExprPrecedence6: RawExpr = {
         RawExpr::Prop{expr: Box::new((expr, loc)), name, type_prop: false},
 
     <fn_loc:@L> <fn_expr:ExprPrecedence6> "."
-        <name_loc:@L> <name:StrLiteral> => {
+        <code_loc:@L> <code:StrLiteral> => {
 
         RawExpr::Object{
             props: vec![
                 PropItem::Pair{
                     name: (
                         RawExpr::Str{
-                            s: "name".to_string(),
+                            s: "code".to_string(),
                             interpolation_slots: None,
                         },
-                        name_loc,
+                        code_loc,
                     ),
                     value: (
-                        RawExpr::Str{s: name, interpolation_slots: None},
-                        name_loc,
+                        RawExpr::Str{s: code, interpolation_slots: None},
+                        code_loc,
                     ),
                 },
                 PropItem::Pair{
@@ -253,7 +253,7 @@ pub ExprPrecedence6: RawExpr = {
                             s: "fn".to_string(),
                             interpolation_slots: None,
                         },
-                        name_loc,
+                        fn_loc,
                     ),
                     value: (fn_expr, fn_loc),
                 },
