@@ -160,6 +160,26 @@ pub ExprPrecedence1: RawExpr = {
             expr: Box::new((expr, op_loc)),
         },
 
+    <msg_loc:@L> <msg:ExprPrecedence2> "!"
+        "{" "}" => {
+
+        RawExpr::Object{
+            props: vec![
+                PropItem::Pair{
+                    name: (
+                        RawExpr::Str{
+                            s: "msg".to_string(),
+                            interpolation_slots: None,
+                        },
+                        msg_loc,
+                    ),
+                    value: (msg, msg_loc),
+                },
+            ],
+            is_mutable: false,
+        }
+    },
+
     <loc:@L> "?" <expr:ExprPrecedence2> =>
         RawExpr::CatchAsBool{expr: Box::new((expr, loc))},
 

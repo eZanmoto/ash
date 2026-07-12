@@ -10,6 +10,7 @@ use snafu::prelude::*;
 use crate::ast::BinaryOp;
 use crate::ast::UnaryOp;
 use crate::eval::Value;
+use crate::value::Str;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -216,25 +217,19 @@ pub enum Error {
     PropSpreadInParamList,
     #[snafu(display("can't use spread operator in parameter list"))]
     ItemSpreadInParamList,
-    #[snafu(display("error object has no 'code' property"))]
-    InvalidErrorObjectNoCode,
+    #[snafu(display("error object has no 'msg' property"))]
+    InvalidErrorObjectNoMsg,
     #[snafu(display(
-        "error object 'code' can only be a string, got '{}'",
+        "error object 'msg' can only be a string, got '{}'",
         render_type(value),
     ))]
-    InvalidErrorObjectCodeNotString{value: Value},
-    #[snafu(display("error object has no 'fn' property"))]
-    InvalidErrorObjectNoFn,
-    #[snafu(display(
-        "error object 'fn' can only be a function, got '{}'",
-        render_type(value),
-    ))]
-    InvalidErrorObjectFnNotFunc{value: Value},
-
+    InvalidErrorObjectMsgNotString{value: Value},
     #[snafu(display("{}", msg))]
     BuiltinFuncErr{msg: String},
-    #[snafu(display("{}", msg))]
-    Runtime{msg: String},
+
+    // TODO Consider inlining `Object`.
+    #[snafu(display("{}", render_error_object(err_obj)))]
+    Runtime{err_obj: Object},
 
     #[snafu(display("dev error: {}", msg))]
     Dev{msg: String},
@@ -536,6 +531,17 @@ pub enum Error {
     },
 }
 
+pub fn new_runtime_error(msg: &str) -> Error {
+    Error::Runtime{err_obj: Object{
+        msg: msg.to_string().into(),
+    }}
+}
+
+#[derive(Clone, Debug)]
+pub struct Object {
+    pub msg: Str,
+}
+
 pub fn render_type(v: &Value) -> String {
     let s =
         match v {
@@ -587,4 +593,16 @@ pub fn bin_op_symbol(op: &BinaryOp) -> String {
         };
 
     s.to_string()
+}
+
+pub fn render_error_object(err_obj: &Object) -> String {
+    let Object{msg} = err_obj;
+
+    let msg =
+        match String::from_utf8(msg.clone()) {
+            Ok(n) => n,
+            Err(_) => format!("invalid UTF-8 for message {msg:?}"),
+        };
+
+    msg.to_string()
 }

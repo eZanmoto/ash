@@ -31,6 +31,7 @@ use self::builtins::Builtins;
 #[allow(clippy::wildcard_imports)]
 use self::error::*;
 use self::error::Error;
+use self::error::Object as ErrorObject;
 use self::scope::Mutability;
 use self::scope::ScopeStack;
 use self::value::BuiltinFunc;
@@ -328,14 +329,14 @@ fn eval_stmt(
         },
 
         Stmt::Throw{expr} => {
-            let err_obj = eval_expr_to_runtime_error(
+            let err_obj = eval_expr_to_error_object(
                 context,
                 scopes,
                 expr,
             )
                 .context(EvalThrowExprFailed)?;
 
-            return Err(err_obj)
+            return Err(Error::Runtime{err_obj})
         },
     }
 
@@ -615,10 +616,10 @@ fn eval_expr(
                             Some(v) => value::new_str(vec![*v]),
                             None => return new_loc_err(
                                 #[allow(clippy::uninlined_format_args)]
-                                Error::Runtime{msg: format!(
+                                error::new_runtime_error(&format!(
                                     "index '{}' is outside the string bounds",
                                     index,
-                                )},
+                                )),
                             ),
                         };
 
@@ -634,10 +635,10 @@ fn eval_expr(
                             Some(v) => v.clone(),
                             None => return new_loc_err(
                                 #[allow(clippy::uninlined_format_args)]
-                                Error::Runtime{msg: format!(
+                                error::new_runtime_error(&format!(
                                     "index '{}' is outside the list bounds",
                                     index,
-                                )},
+                                )),
                             ),
                         };
 
@@ -657,13 +658,13 @@ fn eval_expr(
                                 value.v.clone()
                             },
                             None => {
-                                return new_loc_err(Error::Runtime{
+                                return new_loc_err(
                                     #[allow(clippy::uninlined_format_args)]
-                                    msg: format!(
+                                    error::new_runtime_error(&format!(
                                         "object doesn't contain property '{}'",
                                         name,
-                                    ),
-                                });
+                                    )),
+                                );
                             },
                         };
 
@@ -896,9 +897,9 @@ fn eval_expr(
                         name: name.clone(),
                     })
                 } else {
-                    new_loc_err(Error::Runtime{msg: format!(
+                    new_loc_err(error::new_runtime_error(&format!(
                         "object doesn't contain property '{name}'",
-                    )})
+                    )))
                 };
 
             v
@@ -955,8 +956,8 @@ fn eval_expr(
                     },
                     Err(err) => {
                         let e = root_error(&err);
-                        if let Error::Runtime{msg} = e {
-                            (value::new_null(), new_error_object(msg))
+                        if let Error::Runtime{err_obj} = e {
+                            (value::new_null(), new_error_object(err_obj))
                         } else {
                             return Err(Error::EvalCatchAsErrorFailed{
                                 source: Box::new(err),
@@ -973,12 +974,12 @@ fn eval_expr(
     }
 }
 
-fn new_error_object(msg: &str) -> SourcedValue {
+fn new_error_object(err_obj: &ErrorObject) -> SourcedValue {
     value::new_object(
         BTreeMap::<String, SourcedValue>::from_iter(vec![
             (
                 "msg".to_string(),
-                value::new_str_from_string(msg.to_string()),
+                value::new_str(err_obj.msg.clone()),
             ),
         ]),
         &Mutability::Const,
@@ -1139,12 +1140,12 @@ fn apply_binary_operation(
     };
     let new_int_overflow = |lhs: &i64, rhs: &i64| {
         Error::AtLoc{
-            source: Box::new(Error::Runtime{msg: format!(
+            source: Box::new(error::new_runtime_error(&format!(
                 "'{} {} {}' caused an integer overflow",
                 lhs,
                 error::bin_op_symbol(op),
                 rhs,
-            )}),
+            ))),
             line: *line,
             col: *col,
         }
@@ -1167,13 +1168,13 @@ fn apply_binary_operation(
                     }
 
                     Err(Error::AtLoc{
-                        source: Box::new(Error::Runtime{msg: format!(
+                        source: Box::new(error::new_runtime_error(&format!(
                             "can't apply '{}' to '{}' and '{}'{}",
                             error::bin_op_symbol(op),
                             lhs_type,
                             rhs_type,
                             msg,
-                        )}),
+                        ))),
                         line: *line,
                         col: *col,
                     })
@@ -1523,12 +1524,12 @@ fn eval_expr_to_index(
     Ok(i)
 }
 
-fn eval_expr_to_runtime_error(
+fn eval_expr_to_error_object(
     context: &EvaluationContext,
     scopes: &mut ScopeStack,
     expr: &Expr,
 )
-    -> Result<Error>
+    -> Result<ErrorObject>
 {
     let (_, (line, col)) = expr;
     let new_loc_err = |source| {
@@ -1537,19 +1538,40 @@ fn eval_expr_to_runtime_error(
 
     match_eval_expr!((context, scopes, expr) {
         Value::Str(msg) => {
-            let msg =
-                match String::from_utf8(msg.clone()) {
-                    Ok(n) => n,
-                    Err(_) => format!("invalid UTF-8 for message {msg:?}"),
+            Ok(error::Object{msg})
+        },
+
+        Value::Object{ref props, ..} => {
+            let props_val = &lock_deref!(props);
+
+            let SourcedValue{v: msg_value, ..} =
+                if let Some(v) = props_val.get("msg") {
+                    v
+                } else {
+                    return new_loc_err(Error::InvalidErrorObjectNoMsg);
                 };
 
-            Ok(Error::Runtime{msg})
+            let msg =
+                if let Value::Str(n) = msg_value {
+                    n
+                } else {
+                    return new_loc_err(Error::InvalidErrorObjectMsgNotString{
+                        value: msg_value.clone(),
+                    });
+                };
+
+            // TODO Consider the tradeoff between just creating a new reference
+            // to the original object compared to the approach here where the
+            // fields are copied to a new object.
+            Ok(error::Object{
+                msg: msg.clone(),
+            })
         },
 
         value =>
             new_loc_err(Error::IncorrectType{
                 descr: "error object".to_string(),
-                exp_type: "string".to_string(),
+                exp_type: "object".to_string(),
                 value,
             }),
     })
