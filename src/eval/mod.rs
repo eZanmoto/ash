@@ -764,84 +764,8 @@ fn eval_expr(
         },
 
         RawExpr::Object{props, is_mutable} => {
-            let mut vals = BTreeMap::<String, SourcedValue>::new();
-
-            for prop in props {
-                match prop {
-                    PropItem::Pair{name: name_expr, value} => {
-                        let descr = "property name";
-                        let name =
-                            eval_expr_to_str(context, scopes, descr, name_expr)
-                                .context(EvalPropNameFailed)?;
-
-                        let v = eval_expr(context, scopes, value)
-                            .context(EvalPropValueFailed{name: name.clone()})?;
-
-                        vals.insert(name, v);
-                    },
-
-                    PropItem::Single{expr, is_spread, collect} => {
-                        if *collect {
-                            return new_loc_err(
-                                Error::ObjectCollectOutsideDestructure,
-                            )
-                        }
-
-                        if *is_spread {
-                            match_eval_expr!((context, scopes, expr) {
-                                Value::Object{props, ..} => {
-                                    for (name, value) in &lock_deref!(props) {
-                                        vals.insert(
-                                            name.to_string(),
-                                            value.clone(),
-                                        );
-                                    }
-                                },
-
-                                value => {
-                                    let (_, (line, col)) = expr;
-
-                                    return Err(Error::AtLoc{
-                                        source: Box::new(
-                                            Error::SpreadNonObjectInObject{
-                                                value,
-                                            },
-                                        ),
-                                        line: *line,
-                                        col: *col,
-                                    });
-                                },
-                            });
-                        } else {
-                            let (raw_expr, (line, col)) = expr;
-
-                            if let RawExpr::Var{name} = raw_expr {
-                                let v =
-                                    match scopes.get(name) {
-                                        Some(v) => v.clone(),
-                                        None => return Err(Error::AtLoc{
-                                            source: Box::new(Error::Undefined{
-                                                name: name.clone()
-                                            }),
-                                            line: *line,
-                                            col: *col,
-                                        }),
-                                    };
-
-                                vals.insert(name.to_string(), v);
-                            } else {
-                                return Err(Error::AtLoc{
-                                    source: Box::new(
-                                        Error::ObjectPropShorthandNotVar,
-                                    ),
-                                    line: *line,
-                                    col: *col,
-                                });
-                            }
-                        }
-                    },
-                }
-            }
+            let vals = eval_props(context, scopes, (line, col), props)
+                .context(EvalObjectPropsFailed)?;
 
             let mut m = Mutability::Const;
             if *is_mutable {
