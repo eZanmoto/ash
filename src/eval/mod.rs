@@ -985,7 +985,13 @@ fn eval_expr(
                     Err(err) => {
                         let e = root_error(&err);
                         if let Error::Runtime{err_obj} = e {
-                            (value::new_null(), new_error_object(err_obj))
+                            (
+                                value::new_null(),
+                                value::new_object(
+                                    err_obj.clone(),
+                                    &Mutability::Const,
+                                )
+                            )
                         } else {
                             return Err(Error::EvalCatchAsErrorFailed{
                                 source: Box::new(err),
@@ -1093,13 +1099,6 @@ fn eval_props(
     }
 
     Ok(vals)
-}
-
-fn new_error_object(err_obj: &Object) -> SourcedValue {
-    value::new_object(
-        err_obj.clone(),
-        &Mutability::Const,
-    )
 }
 
 // `root_error` recursively follows the `source` chain of `err` and returns the
