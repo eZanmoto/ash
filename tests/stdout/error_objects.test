@@ -3,6 +3,8 @@ print("my error"!{})
 --------------------------------------------------
 {
     "msg": my error,
+    "sources": [
+    ],
 }
 ================================================== context
 print("my error"!{
@@ -14,5 +16,69 @@ print("my error"!{
     "a": 1,
     "b": 2,
     "msg": my error,
+    "sources": [
+    ],
+}
+================================================== one_source
+err1 := "error one"!{}
+
+print("my error"!(err1){})
+--------------------------------------------------
+{
+    "msg": my error,
+    "sources": [
+        {
+            "msg": error one,
+            "sources": [
+            ],
+        },
+    ],
+}
+================================================== two_sources
+err1 := "error one"!{}
+err2 := "error two"!{}
+
+print("my error"!(err1, err2){})
+--------------------------------------------------
+{
+    "msg": my error,
+    "sources": [
+        {
+            "msg": error one,
+            "sources": [
+            ],
+        },
+        {
+            "msg": error two,
+            "sources": [
+            ],
+        },
+    ],
+}
+================================================== two_sources_and_ctx
+err1 := "error one"!{}
+err2 := "error two"!{}
+
+print("my error"!(err1, err2){
+    "a": 1,
+    "b": 2,
+})
+--------------------------------------------------
+{
+    "a": 1,
+    "b": 2,
+    "msg": my error,
+    "sources": [
+        {
+            "msg": error one,
+            "sources": [
+            ],
+        },
+        {
+            "msg": error two,
+            "sources": [
+            ],
+        },
+    ],
 }
 ==================================================

@@ -161,11 +161,18 @@ pub ExprPrecedence1: RawExpr = {
         },
 
     <msg_loc:@L> <msg:ExprPrecedence2> "!"
+        <maybe_srcs:( "(" <ArgList> ")" )?>
         "{" <context:PropList> "}" => {
+
+        let mut sources = vec![];
+        if let Some(srcs) = maybe_srcs {
+            sources = srcs;
+        }
 
         RawExpr::ErrorObject{
             msg: Box::new((msg, msg_loc)),
             context,
+            sources,
         }
     },
 

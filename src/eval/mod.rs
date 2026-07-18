@@ -850,28 +850,45 @@ fn eval_expr(
             Ok(v)
         },
 
-        RawExpr::ErrorObject{msg, context: err_obj_context} => {
-            let msg_value =
-                eval_expr_to_str(context, scopes, "error object message", msg)
-                    .context(EvalErrorObjectMsgFailed)?;
-
+        RawExpr::ErrorObject{msg, context: err_obj_context, sources} => {
             let mut props = BTreeMap::<String, SourcedValue>::new();
 
-            let context =
+            let context_vals =
                 eval_props(context, scopes, (line, col), err_obj_context)
                     .context(EvalErrorObjectContextFailed)?;
 
-            for (name, value) in context {
+            for (name, value) in context_vals {
                 if name == "msg" {
                     return new_loc_err(error::new_runtime_error(
                         "error object context can't contain 'msg'",
                     ));
                 }
 
+                if name == "sources" {
+                    return new_loc_err(error::new_runtime_error(
+                        "error object context can't contain 'sources'",
+                    ));
+                }
+
                 props.insert(name, value);
             }
 
-            props.insert("msg".to_string(), value::new_str(msg_value.into()));
+            let msg_value =
+                eval_expr_to_str(context, scopes, "error object message", msg)
+                    .context(EvalErrorObjectMsgFailed)?;
+
+            props.insert(
+                "msg".to_string(),
+                value::new_str(msg_value.into()),
+            );
+
+            let sources_value = eval_list_items(context, scopes, sources)
+                .context(EvalErrorObjectSourcesFailed)?;
+
+            props.insert(
+                "sources".to_string(),
+                value::new_list(sources_value, &Mutability::Const),
+            );
 
             Ok(value::new_object(props, &Mutability::Const))
         },
@@ -1603,6 +1620,18 @@ fn eval_expr_to_error_object(
                 return new_loc_err(Error::InvalidErrorObjectMsgNotString{
                     value: msg_value.clone(),
                 });
+            }
+
+            // TODO Consider whether `sources` should be a required property.
+            if let Some(v) = props_val.get("sources") {
+                let SourcedValue{v: sources_value, ..} = v;
+
+                if let Value::List{..} = sources_value {
+                } else {
+                    return new_loc_err(Error::InvalidErrorObjectSourcesNotList{
+                        value: sources_value.clone(),
+                    });
+                }
             }
 
             Ok(props_val.clone())

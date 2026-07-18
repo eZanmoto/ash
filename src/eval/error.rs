@@ -223,10 +223,15 @@ pub enum Error {
     #[snafu(display("error object has no 'msg' property"))]
     InvalidErrorObjectNoMsg,
     #[snafu(display(
-        "error object 'msg' can only be a string, got '{}'",
+        "error object 'msg' can only be 'string', got '{}'",
         render_type(value),
     ))]
     InvalidErrorObjectMsgNotString{value: Value},
+    #[snafu(display(
+        "error object 'sources' can only be 'list', got '{}'",
+        render_type(value),
+    ))]
+    InvalidErrorObjectSourcesNotList{value: Value},
     #[snafu(display("{}", msg))]
     BuiltinFuncErr{msg: String},
 
@@ -501,6 +506,10 @@ pub enum Error {
         source: Box<Error>,
     },
     EvalErrorObjectContextFailed{
+        #[snafu(source(from(Error, Box::new)))]
+        source: Box<Error>,
+    },
+    EvalErrorObjectSourcesFailed{
         #[snafu(source(from(Error, Box::new)))]
         source: Box<Error>,
     },

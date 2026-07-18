@@ -660,7 +660,14 @@ exit_code: 103
 throw {"msg": 1}
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/throw_msg_not_string_error.ash:1:7: error object 'msg' can only be a string, got 'int'
+runtime_errors/throw_msg_not_string_error.ash:1:7: error object 'msg' can only be 'string', got 'int'
+================================================== throw_sources_not_list_error
+exit_code: 103
+--------------------------------------------------
+throw {"msg": "...", "sources": 1}
+--------------------------------------------------
+--------------------------------------------------
+runtime_errors/throw_sources_not_list_error.ash:1:7: error object 'sources' can only be 'list', got 'int'
 ================================================== int_msg_error_object
 exit_code: 103
 --------------------------------------------------
@@ -675,4 +682,11 @@ exit_code: 103
 --------------------------------------------------
 --------------------------------------------------
 runtime_errors/error_context_msg.ash:1:1: error object context can't contain 'msg'
+================================================== error_context_sources
+exit_code: 103
+--------------------------------------------------
+""!{"sources": ""}
+--------------------------------------------------
+--------------------------------------------------
+runtime_errors/error_context_sources.ash:1:1: error object context can't contain 'sources'
 ==================================================

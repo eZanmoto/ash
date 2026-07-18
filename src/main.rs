@@ -356,6 +356,7 @@ fn eval_err_to_stacktrace(path: &Path, func: Option<&str>, error: EvalError)
         EvalError::EvalCallFuncFailed{source} |
         EvalError::EvalErrorObjectMsgFailed{source} |
         EvalError::EvalErrorObjectContextFailed{source} |
+        EvalError::EvalErrorObjectSourcesFailed{source} |
         EvalError::EvalCatchAsBoolFailed{source} |
         EvalError::EvalExprFailed{source} |
         EvalError::EvalPropFailed{source} |

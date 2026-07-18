@@ -165,6 +165,8 @@ print(err)
     "a": 1,
     "b": 2,
     "msg": my error,
+    "sources": [
+    ],
 }
 ================================================== throw_error_object_manual
 fn f() {
@@ -199,5 +201,7 @@ print(err)
     "a": 1,
     "b": 2,
     "msg": my error: details,
+    "sources": [
+    ],
 }
 ==================================================
