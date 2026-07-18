@@ -1594,6 +1594,10 @@ fn eval_expr_to_error_object(
 
     match_eval_expr!((context, scopes, expr) {
         Value::Str(msg) => {
+            if msg.is_empty() {
+                return new_loc_err(Error::InvalidErrorStrMsgIsEmpty);
+            }
+
             // TODO Duplicated from `error::new_runtime_error`.
             let err_obj = BTreeMap::<String, SourcedValue>::from_iter(vec![
                 (
@@ -1615,11 +1619,17 @@ fn eval_expr_to_error_object(
                     return new_loc_err(Error::InvalidErrorObjectNoMsg);
                 };
 
-            if let Value::Str(_) = msg_value {
-            } else {
-                return new_loc_err(Error::InvalidErrorObjectMsgNotString{
-                    value: msg_value.clone(),
-                });
+            let msg =
+                if let Value::Str(s) = msg_value {
+                    s
+                } else {
+                    return new_loc_err(Error::InvalidErrorObjectMsgNotString{
+                        value: msg_value.clone(),
+                    });
+                };
+
+            if msg.is_empty() {
+                return new_loc_err(Error::InvalidErrorObjectMsgIsEmpty);
             }
 
             // TODO Consider whether `sources` should be a required property.

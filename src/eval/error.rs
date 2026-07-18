@@ -220,6 +220,8 @@ pub enum Error {
     PropSpreadInParamList,
     #[snafu(display("can't use spread operator in parameter list"))]
     ItemSpreadInParamList,
+    #[snafu(display("error string can't be empty"))]
+    InvalidErrorStrMsgIsEmpty,
     #[snafu(display("error object has no 'msg' property"))]
     InvalidErrorObjectNoMsg,
     #[snafu(display(
@@ -227,6 +229,8 @@ pub enum Error {
         render_type(value),
     ))]
     InvalidErrorObjectMsgNotString{value: Value},
+    #[snafu(display("error object 'msg' can't be an empty 'string'"))]
+    InvalidErrorObjectMsgIsEmpty,
     #[snafu(display(
         "error object 'sources' can only be 'list', got '{}'",
         render_type(value),
