@@ -136,7 +136,21 @@ if err == null {
 }
 --------------------------------------------------
 error: my error
-================================================== throw_error_object_manual
+================================================== interp_str
+fn f() {
+    s := "details"
+    throw $"my error: ${s}"
+}
+
+[_, err] := ?? f()
+if err == null {
+    print("ok")
+} else {
+    print($"error: ${err.msg}")
+}
+--------------------------------------------------
+error: my error: details
+================================================== throw_error_object_literal
 fn f() {
     throw "my error"!{
         "a": 1,
@@ -152,7 +166,7 @@ print(err)
     "b": 2,
     "msg": my error,
 }
-================================================== throw_error_object_literal
+================================================== throw_error_object_manual
 fn f() {
     throw {
         "a": 1,
@@ -168,5 +182,22 @@ print(err)
     "a": 1,
     "b": 2,
     "msg": my error,
+}
+================================================== interp_str_err_obj_literal
+fn f() {
+    s := "details"
+    throw $"my error: ${s}"!{
+        "a": 1,
+        "b": 2,
+    }
+}
+
+[_, err] := ?? f()
+print(err)
+--------------------------------------------------
+{
+    "a": 1,
+    "b": 2,
+    "msg": my error: details,
 }
 ==================================================

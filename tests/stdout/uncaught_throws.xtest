@@ -36,4 +36,12 @@ uncaught_throws/two_levels.ash:my error
 Stacktrace:
   uncaught_throws/two_levels.ash:2:5: in 'g'
   uncaught_throws/two_levels.ash:9:1: in '<root>'
+================================================== interp_str
+exit_code: 103
+--------------------------------------------------
+s := "details"
+throw $"my error: ${s}"
+--------------------------------------------------
+--------------------------------------------------
+uncaught_throws/interp_str.ash:my error: details
 ==================================================
