@@ -31,12 +31,12 @@ use self::builtins::Builtins;
 #[allow(clippy::wildcard_imports)]
 use self::error::*;
 use self::error::Error;
-use self::error::Object as ErrorObject;
 use self::scope::Mutability;
 use self::scope::ScopeStack;
 use self::value::BuiltinFunc;
 use self::value::Func;
 use self::value::ListRef;
+use self::value::Object;
 use self::value::SourcedValue;
 use self::value::Str;
 use self::value::Value;
@@ -426,6 +426,8 @@ fn validate_args(args: &[Expr]) -> Result<()> {
                 return new_invalid_bind_error("an anonymous function"),
             RawExpr::Call{..} =>
                 return new_invalid_bind_error("a function call"),
+            RawExpr::ErrorObject{..} =>
+                return new_invalid_bind_error("an error object literal"),
             RawExpr::CatchAsBool{..} =>
                 return new_invalid_bind_error("a boolean catch"),
             RawExpr::CatchAsError{..} =>
@@ -924,6 +926,32 @@ fn eval_expr(
             Ok(v)
         },
 
+        RawExpr::ErrorObject{msg, context: err_obj_context} => {
+            let msg_value =
+                eval_expr_to_str(context, scopes, "error object message", msg)
+                    .context(EvalErrorObjectMsgFailed)?;
+
+            let mut props = BTreeMap::<String, SourcedValue>::new();
+
+            let context =
+                eval_props(context, scopes, (line, col), err_obj_context)
+                    .context(EvalErrorObjectContextFailed)?;
+
+            for (name, value) in context {
+                if name == "msg" {
+                    return new_loc_err(error::new_runtime_error(
+                        "error object context can't contain 'msg'",
+                    ));
+                }
+
+                props.insert(name, value);
+            }
+
+            props.insert("msg".to_string(), value::new_str(msg_value.into()));
+
+            Ok(value::new_object(props, &Mutability::Const))
+        },
+
         RawExpr::CatchAsBool{expr} => {
             let (maybe_value, maybe_err) =
                 match eval_expr(context, scopes, expr) {
@@ -974,14 +1002,102 @@ fn eval_expr(
     }
 }
 
-fn new_error_object(err_obj: &ErrorObject) -> SourcedValue {
+fn eval_props(
+    context: &EvaluationContext,
+    scopes: &mut ScopeStack,
+    loc: (&usize, &usize),
+    props: &Vec<PropItem>,
+) -> Result<BTreeMap<String, SourcedValue>> {
+    let (line, col) = loc;
+    let new_loc_err = |source| {
+        Err(Error::AtLoc{source: Box::new(source), line: *line, col: *col})
+    };
+
+    let mut vals = BTreeMap::<String, SourcedValue>::new();
+
+    for prop in props {
+        match prop {
+            PropItem::Pair{name: name_expr, value} => {
+                let descr = "property name";
+                let name =
+                    eval_expr_to_str(context, scopes, descr, name_expr)
+                        .context(EvalPropNameFailed)?;
+
+                let v = eval_expr(context, scopes, value)
+                    .context(EvalPropValueFailed{name: name.clone()})?;
+
+                vals.insert(name, v);
+            },
+
+            PropItem::Single{expr, is_spread, collect} => {
+                if *collect {
+                    return new_loc_err(
+                        Error::ObjectCollectOutsideDestructure,
+                    )
+                }
+
+                if *is_spread {
+                    match_eval_expr!((context, scopes, &expr) {
+                        Value::Object{props, ..} => {
+                            for (name, value) in &lock_deref!(props) {
+                                vals.insert(
+                                    name.to_string(),
+                                    value.clone(),
+                                );
+                            }
+                        },
+
+                        value => {
+                            let (_, (line, col)) = expr;
+
+                            return Err(Error::AtLoc{
+                                source: Box::new(
+                                    Error::SpreadNonObjectInObject{
+                                        value,
+                                    },
+                                ),
+                                line: *line,
+                                col: *col,
+                            });
+                        },
+                    });
+                } else {
+                    let (raw_expr, (line, col)) = expr;
+
+                    if let RawExpr::Var{name} = raw_expr {
+                        let v =
+                            match scopes.get(name) {
+                                Some(v) => v.clone(),
+                                None => return Err(Error::AtLoc{
+                                    source: Box::new(Error::Undefined{
+                                        name: name.clone()
+                                    }),
+                                    line: *line,
+                                    col: *col,
+                                }),
+                            };
+
+                        vals.insert(name.to_string(), v);
+                    } else {
+                        return Err(Error::AtLoc{
+                            source: Box::new(
+                                Error::ObjectPropShorthandNotVar,
+                            ),
+                            line: *line,
+                            col: *col,
+                        });
+                    }
+                }
+            },
+        }
+    }
+
+    Ok(vals)
+}
+
+fn new_error_object(err_obj: &Object) -> SourcedValue {
     value::new_object(
-        BTreeMap::<String, SourcedValue>::from_iter(vec![
-            (
-                "msg".to_string(),
-                value::new_str(err_obj.msg.clone()),
-            ),
-        ]),
+        err_obj.clone(),
         &Mutability::Const,
     )
 }
@@ -1529,7 +1645,7 @@ fn eval_expr_to_error_object(
     scopes: &mut ScopeStack,
     expr: &Expr,
 )
-    -> Result<ErrorObject>
+    -> Result<Object>
 {
     let (_, (line, col)) = expr;
     let new_loc_err = |source| {
@@ -1538,10 +1654,18 @@ fn eval_expr_to_error_object(
 
     match_eval_expr!((context, scopes, expr) {
         Value::Str(msg) => {
-            Ok(error::Object{msg})
+            // TODO Duplicated from `error::new_runtime_error`.
+            let err_obj = BTreeMap::<String, SourcedValue>::from_iter(vec![
+                (
+                    "msg".to_string(),
+                    value::new_str(msg),
+                ),
+            ]);
+
+            Ok(err_obj)
         },
 
-        Value::Object{ref props, ..} => {
+        Value::Object{props, ..} => {
             let props_val = &lock_deref!(props);
 
             let SourcedValue{v: msg_value, ..} =
@@ -1551,29 +1675,23 @@ fn eval_expr_to_error_object(
                     return new_loc_err(Error::InvalidErrorObjectNoMsg);
                 };
 
-            let msg =
-                if let Value::Str(n) = msg_value {
-                    n
-                } else {
-                    return new_loc_err(Error::InvalidErrorObjectMsgNotString{
-                        value: msg_value.clone(),
-                    });
-                };
+            if let Value::Str(_) = msg_value {
+            } else {
+                return new_loc_err(Error::InvalidErrorObjectMsgNotString{
+                    value: msg_value.clone(),
+                });
+            }
 
-            // TODO Consider the tradeoff between just creating a new reference
-            // to the original object compared to the approach here where the
-            // fields are copied to a new object.
-            Ok(error::Object{
-                msg: msg.clone(),
-            })
+            Ok(props_val.clone())
         },
 
-        value =>
+        value => {
             new_loc_err(Error::IncorrectType{
                 descr: "error object".to_string(),
                 exp_type: "object".to_string(),
                 value,
-            }),
+            })
+        },
     })
 }
 

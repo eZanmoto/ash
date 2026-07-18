@@ -317,6 +317,8 @@ pub fn bind_next(
             new_invalid_bind_error("an anonymous function"),
         RawExpr::Call{..} =>
             new_invalid_bind_error("a function call"),
+        RawExpr::ErrorObject{..} =>
+            new_invalid_bind_error("an error object literal"),
         RawExpr::CatchAsBool{..} =>
             new_invalid_bind_error("a boolean catch"),
         RawExpr::CatchAsError{..} =>

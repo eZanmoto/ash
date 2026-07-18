@@ -99,6 +99,7 @@ pub enum RawExpr {
     Func{args: Vec<Expr>, collect_args: bool, stmts: Block},
     Call{func: Box<Expr>, args: Vec<ListItem>},
 
+    ErrorObject{msg: Box<Expr>, context: Vec<PropItem>},
     CatchAsBool{expr: Box<Expr>},
     CatchAsError{expr: Box<Expr>},
 }

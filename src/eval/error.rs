@@ -2,6 +2,7 @@
 // Use of this source code is governed by an MIT
 // licence that can be found in the LICENCE file.
 
+use std::collections::BTreeMap;
 use std::num::TryFromIntError;
 use std::string::FromUtf8Error;
 
@@ -10,7 +11,9 @@ use snafu::prelude::*;
 use crate::ast::BinaryOp;
 use crate::ast::UnaryOp;
 use crate::eval::Value;
-use crate::value::Str;
+use crate::value;
+use crate::value::Object;
+use crate::value::SourcedValue;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -489,6 +492,14 @@ pub enum Error {
         func_name: Option<String>,
         call_loc: (usize, usize),
     },
+    EvalErrorObjectMsgFailed{
+        #[snafu(source(from(Error, Box::new)))]
+        source: Box<Error>,
+    },
+    EvalErrorObjectContextFailed{
+        #[snafu(source(from(Error, Box::new)))]
+        source: Box<Error>,
+    },
     EvalCatchAsBoolFailed{
         #[snafu(source(from(Error, Box::new)))]
         source: Box<Error>,
@@ -532,14 +543,14 @@ pub enum Error {
 }
 
 pub fn new_runtime_error(msg: &str) -> Error {
-    Error::Runtime{err_obj: Object{
-        msg: msg.to_string().into(),
-    }}
-}
+    let err_obj = BTreeMap::<String, SourcedValue>::from_iter(vec![
+        (
+            "msg".to_string(),
+            value::new_str(msg.into()),
+        ),
+    ]);
 
-#[derive(Clone, Debug)]
-pub struct Object {
-    pub msg: Str,
+    Error::Runtime{err_obj}
 }
 
 pub fn render_type(v: &Value) -> String {
@@ -596,13 +607,22 @@ pub fn bin_op_symbol(op: &BinaryOp) -> String {
 }
 
 pub fn render_error_object(err_obj: &Object) -> String {
-    let Object{msg} = err_obj;
-
-    let msg =
-        match String::from_utf8(msg.clone()) {
-            Ok(n) => n,
-            Err(_) => format!("invalid UTF-8 for message {msg:?}"),
+    let SourcedValue{v: msg_value, ..} =
+        if let Some(v) = err_obj.get("msg") {
+            v
+        } else {
+            return "error object doesn't contain 'msg'".to_string()
         };
 
-    msg.to_string()
+    let msg =
+        if let Value::Str(s) = msg_value {
+            s
+        } else {
+            return "error object 'msg' isn't 'string'".to_string()
+        };
+
+    match String::from_utf8(msg.clone()) {
+        Ok(n) => n.to_string(),
+        Err(_) => format!("invalid UTF-8 for message {msg:?}"),
+    }
 }
