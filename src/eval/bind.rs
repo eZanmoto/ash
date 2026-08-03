@@ -11,6 +11,9 @@ use snafu::ResultExt;
 use crate::ast::*;
 use crate::eval;
 use eval::EvaluationContext;
+// FIXME This import of `error` should be removed by moving `new_runtime_error`
+// to `crate::eval`.
+use super::error;
 #[allow(clippy::wildcard_imports)]
 use super::error::*;
 use super::error::Error;
@@ -84,6 +87,17 @@ pub fn bind_next(
         new_loc_err(Error::InvalidBindTarget{descr: s.to_string()})
     };
 
+    let new_runtime_error = |msg: String| {
+        let (line, col) = loc;
+
+        error::new_runtime_error(
+            msg.into(),
+            context.cur_func.clone(),
+            *line,
+            *col,
+        )
+    };
+
     match raw_lhs {
         RawExpr::Var{name} => {
             bind_next_name(
@@ -110,7 +124,7 @@ pub fn bind_next(
                         .context(EvalListIndexFailed)?;
 
                     if n >= lock_deref!(items).len() {
-                        return new_loc_err(new_runtime_error(&format!(
+                        return Err(new_runtime_error(format!(
                             "index '{n}' is outside the list bounds",
                         )));
                     }
@@ -650,16 +664,21 @@ fn bind_object_prop(
         return Ok(());
     }
 
-    let new_loc_err = |source| {
+    let new_runtime_error = |msg: String| {
         let (line, col) = prop_name.1;
 
-        Err(Error::AtLoc{source: Box::new(source), line: *line, col: *col})
+        error::new_runtime_error(
+            msg.into(),
+            context.cur_func.clone(),
+            *line,
+            *col,
+        )
     };
 
     let new_rhs =
         match lock_deref!(rhs).get(prop_name.0) {
             Some(v) => v.clone(),
-            None => return new_loc_err(new_runtime_error(&format!(
+            None => return Err(new_runtime_error(format!(
                 "object doesn't contain property '{}'",
                 prop_name.0,
             ))),

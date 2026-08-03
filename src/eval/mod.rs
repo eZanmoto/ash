@@ -62,6 +62,7 @@ pub struct EvaluationContext<'a> {
     // TODO `cur_script_dir` will later be exposed by reflection imports.
     #[allow(dead_code)]
     pub cur_script_dir: PathBuf,
+    pub cur_func: Option<SourcedValue>,
 }
 
 pub fn eval_prog(
@@ -511,6 +512,14 @@ fn eval_expr(
     let new_loc_err = |source| {
         Err(Error::AtLoc{source: Box::new(source), line: *line, col: *col})
     };
+    let new_runtime_error = |msg: String| {
+        Err(error::new_runtime_error(
+            msg.into(),
+            context.cur_func.clone(),
+            *line,
+            *col,
+        ))
+    };
 
     match raw_expr {
         RawExpr::Null => Ok(value::new_null()),
@@ -615,14 +624,16 @@ fn eval_expr(
 
                     let v =
                         match s.get(index) {
-                            Some(v) => value::new_str(vec![*v]),
-                            None => return new_loc_err(
-                                #[allow(clippy::uninlined_format_args)]
-                                error::new_runtime_error(&format!(
+                            Some(v) => {
+                                value::new_str(vec![*v])
+                            },
+                            #[allow(clippy::uninlined_format_args)]
+                            None => {
+                                return new_runtime_error(format!(
                                     "index '{}' is outside the string bounds",
                                     index,
-                                )),
-                            ),
+                                ))
+                            },
                         };
 
                     Ok(v)
@@ -635,13 +646,11 @@ fn eval_expr(
                     let v =
                         match lock_deref!(items).get(index) {
                             Some(v) => v.clone(),
-                            None => return new_loc_err(
-                                #[allow(clippy::uninlined_format_args)]
-                                error::new_runtime_error(&format!(
+                            #[allow(clippy::uninlined_format_args)]
+                            None => return new_runtime_error(format!(
                                     "index '{}' is outside the list bounds",
                                     index,
-                                )),
-                            ),
+                            )),
                         };
 
                     Ok(v)
@@ -660,13 +669,9 @@ fn eval_expr(
                                 value.v.clone()
                             },
                             None => {
-                                return new_loc_err(
-                                    #[allow(clippy::uninlined_format_args)]
-                                    error::new_runtime_error(&format!(
-                                        "object doesn't contain property '{}'",
-                                        name,
-                                    )),
-                                );
+                                return new_runtime_error(format!(
+                                    "object doesn't contain property '{name}'",
+                                ));
                             },
                         };
 
@@ -823,9 +828,9 @@ fn eval_expr(
                         name: name.clone(),
                     })
                 } else {
-                    new_loc_err(error::new_runtime_error(&format!(
+                    new_runtime_error(format!(
                         "object doesn't contain property '{name}'",
-                    )))
+                    ))
                 };
 
             v
@@ -859,15 +864,13 @@ fn eval_expr(
 
             for (name, value) in context_vals {
                 if name == "msg" {
-                    return new_loc_err(error::new_runtime_error(
-                        "error object context can't contain 'msg'",
-                    ));
+                    let s = "error object context can't contain 'msg'";
+                    return new_runtime_error(s.to_string());
                 }
 
                 if name == "sources" {
-                    return new_loc_err(error::new_runtime_error(
-                        "error object context can't contain 'sources'",
-                    ));
+                    let s = "error object context can't contain 'sources'";
+                    return new_runtime_error(s.to_string());
                 }
 
                 props.insert(name, value);
@@ -1044,7 +1047,7 @@ fn eval_props(
 
 // `root_error` recursively follows the `source` chain of `err` and returns the
 // deepest `Error` instance that was found.
-fn root_error(err: &Error) -> &Error {
+pub fn root_error(err: &Error) -> &Error {
     let mut cur_err = err;
     loop {
         if let Some(e) = cur_err.source() {
@@ -1194,17 +1197,28 @@ fn apply_binary_operation(
             col: *col,
         }
     };
+    let new_runtime_error = |msg: String| {
+        error::new_runtime_error(
+            msg.into(),
+            // FIXME Add current function to context.
+            None,
+            *line,
+            *col,
+        )
+    };
     let new_int_overflow = |lhs: &i64, rhs: &i64| {
-        Error::AtLoc{
-            source: Box::new(error::new_runtime_error(&format!(
+        error::new_runtime_error(
+            format!(
                 "'{} {} {}' caused an integer overflow",
                 lhs,
                 error::bin_op_symbol(op),
                 rhs,
-            ))),
-            line: *line,
-            col: *col,
-        }
+            ).into(),
+            // FIXME Add current function to context.
+            None,
+            *line,
+            *col,
+        )
     };
 
     match op {
@@ -1223,17 +1237,13 @@ fn apply_binary_operation(
                         msg = format!(" (at {path})");
                     }
 
-                    Err(Error::AtLoc{
-                        source: Box::new(error::new_runtime_error(&format!(
-                            "can't apply '{}' to '{}' and '{}'{}",
-                            error::bin_op_symbol(op),
-                            lhs_type,
-                            rhs_type,
-                            msg,
-                        ))),
-                        line: *line,
-                        col: *col,
-                    })
+                    Err(new_runtime_error(format!(
+                        "can't apply '{}' to '{}' and '{}'{}",
+                        error::bin_op_symbol(op),
+                        lhs_type,
+                        rhs_type,
+                        msg,
+                    )))
                 },
             }
         },
@@ -1598,15 +1608,12 @@ fn eval_expr_to_error_object(
                 return new_loc_err(Error::InvalidErrorStrMsgIsEmpty);
             }
 
-            // TODO Duplicated from `error::new_runtime_error`.
-            let err_obj = BTreeMap::<String, SourcedValue>::from_iter(vec![
-                (
-                    "msg".to_string(),
-                    value::new_str(msg),
-                ),
-            ]);
-
-            Ok(err_obj)
+            Ok(error::new_runtime_error_object(
+                msg,
+                context.cur_func.clone(),
+                *line,
+                *col,
+            ))
         },
 
         Value::Object{props, ..} => {
@@ -1655,6 +1662,37 @@ fn eval_expr_to_error_object(
             })
         },
     })
+}
+
+fn new_error_stack_frame(
+    func: Option<SourcedValue>,
+    line: usize,
+    col: usize,
+) -> SourcedValue {
+    let mut props = vec![
+        // TODO Add source file.
+        (
+            "line".to_string(),
+            // TODO Handle this casting error.
+            #[allow(clippy::cast_possible_wrap)]
+            value::new_int(line as i64),
+        ),
+        (
+            "col".to_string(),
+            // TODO Handle this casting error.
+            #[allow(clippy::cast_possible_wrap)]
+            value::new_int(col as i64),
+        ),
+    ];
+
+    if let Some(f) = func {
+        props.push(("fn".to_string(), f));
+    }
+
+    value::new_object(
+        BTreeMap::<String, SourcedValue>::from_iter(props),
+        &Mutability::Const,
+    )
 }
 
 fn get_str_range_index(
@@ -1751,21 +1789,25 @@ fn eval_call(
     let func_val = eval_expr(context, scopes, func)
         .context(EvalCallFuncFailed)?;
 
+    let SourcedValue{v: ref func_val_v, source: ref func_val_source} =
+        func_val;
+    let func_val_source = func_val_source.clone();
+
     let (func_name, v) =
         {
-            let SourcedValue{v, source} = func_val;
-
-            match v {
-                Value::BuiltinFunc{name, f} => {
-                    let this = source.map(value::new_val_ref_with_no_source);
+            match func_val_v {
+                Value::BuiltinFunc{ref name, f} => {
+                    let this = func_val_source.map(
+                        value::new_val_ref_with_no_source
+                    );
 
                     (
-                        Some(name),
-                        CallBinding::BuiltinFunc{f, this, args: arg_vals},
+                        Some(name.clone()),
+                        CallBinding::BuiltinFunc{f: *f, this, args: arg_vals},
                     )
                 },
 
-                Value::Func(f) => {
+                Value::Func(ref f) => {
                     let Func{
                         name,
                         args: arg_names,
@@ -1809,7 +1851,7 @@ fn eval_call(
                         bindings.push((arg_names[i].clone(), arg_val));
                     }
 
-                    if let Some(this) = source {
+                    if let Some(this) = func_val_source {
                         // TODO Consider how to avoid creating a
                         // new AST variable node here.
                         bindings.push((
@@ -1832,7 +1874,9 @@ fn eval_call(
                 },
 
                 _ => {
-                    return new_loc_err(Error::CannotCallNonFunc{v});
+                    return new_loc_err(Error::CannotCallNonFunc{
+                        v: func_val_v.clone(),
+                    });
                 },
             }
         };
@@ -1848,16 +1892,43 @@ fn eval_call(
             },
 
             CallBinding::Func{bindings, mut closure, stmts} => {
-                let v = eval_stmts(
-                    context,
+                let new_context = EvaluationContext{
+                    builtins: context.builtins,
+                    cur_script_dir: context.cur_script_dir.clone(),
+                    cur_func: Some(func_val.clone()),
+                };
+
+                let maybe_v = eval_stmts(
+                    &new_context,
                     &mut closure,
                     bindings,
                     &stmts,
-                )
-                    .context(EvalFuncCallFailed{
-                        func_name,
-                        call_loc: (*line, *col),
-                    })?;
+                );
+
+                let v =
+                    match maybe_v {
+                        Ok(v) => {
+                            v
+                        },
+                        Err(source) => {
+                            let e = root_error(&source);
+                            if let Error::Runtime{err_obj} = e {
+                                insert_stack_frame(
+                                    err_obj,
+                                    context.cur_func.clone(),
+                                    *line,
+                                    *col,
+                                )
+                                    .context(InsertStackFrameFailed)?;
+                            }
+
+                            return Err(Error::EvalFuncCallFailed{
+                                source: Box::new(source),
+                                func_name,
+                                call_loc: (*line, *col),
+                            });
+                        },
+                    };
 
                 match v {
                     Escape::None =>
@@ -1873,6 +1944,52 @@ fn eval_call(
         };
 
     Ok(v)
+}
+
+fn insert_stack_frame(
+    err_obj: &Object,
+    func: Option<SourcedValue>,
+    line: usize,
+    col: usize,
+)
+    -> Result<()>
+{
+    let new_loc_err = |source| {
+        Err(Error::AtLoc{source: Box::new(source), line, col})
+    };
+
+    let SourcedValue{v: stack_value, ..} =
+        if let Some(v) = err_obj.get("stack") {
+            v
+        } else {
+            return new_loc_err(
+                Error::InvalidErrorObjectNoStack
+            );
+        };
+
+    let items =
+        if let Value::List{items, ..} = stack_value {
+            items
+        } else {
+            return new_loc_err(Error::InvalidErrorObjectSourcesNotList{
+                value: stack_value.clone(),
+            });
+        };
+
+    let items_val = &mut lock_deref!(items);
+
+    items_val.insert(
+        0,
+        new_error_stack_frame(
+            // TODO Consider whether we want to keep the `source` of `func` for
+            // debug output.
+            func,
+            line,
+            col,
+        ),
+    );
+
+    Ok(())
 }
 
 fn interpolate_string(

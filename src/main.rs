@@ -32,6 +32,9 @@ use eval::builtins::Builtins;
 use eval::EvaluationContext;
 use eval::error::Error as EvalError;
 use eval::value;
+use eval::value::Object;
+use eval::value::SourcedValue;
+use eval::value::Value;
 use eval::scope::ScopeStack;
 use lexer::Lexer;
 use lexer::LexError;
@@ -88,17 +91,34 @@ fn main() {
                     format!("{ln}:{ch}: {msg}")
                 },
                 Error::EvalFailed{source, path} => {
-                    let st = eval_err_to_stacktrace(&path, None, source);
-
-                    let mut rendered_stacktrace = String::new();
-                    if !st.stacktrace.is_empty() {
-                        rendered_stacktrace = format!(
-                            "\nStacktrace:\n  {}",
-                            st.stacktrace.join("\n  "),
+                    let e = eval::root_error(&source);
+                    if let EvalError::Runtime{err_obj} = e {
+                        let v = render_error_object(
+                            cur_rel_script_path,
+                            err_obj,
                         );
-                    }
+                        match v {
+                            Ok(v) =>
+                                v.to_string(),
+                            Err(e) =>
+                                format!(
+                                    // TODO Add the rendered error object.
+                                    "couldn't render error object: {e}",
+                                ),
+                        }
+                    } else {
+                        let st = eval_err_to_stacktrace(&path, None, source);
 
-                    format!("{}{}", st.msg, rendered_stacktrace)
+                        let mut rendered_stacktrace = String::new();
+                        if !st.stacktrace.is_empty() {
+                            rendered_stacktrace = format!(
+                                "\nStacktrace:\n  {}",
+                                st.stacktrace.join("\n  "),
+                            );
+                        }
+
+                        format!("{}{}", st.msg, rendered_stacktrace)
+                    }
                 },
             };
         eprintln!("{raw_cur_rel_script_path}:{msg}");
@@ -141,6 +161,7 @@ fn run(cur_rel_script_path: &Path) -> Result<(), Error> {
                 type_functions: type_functions::type_functions(),
             },
             cur_script_dir,
+            cur_func: None,
         },
         &mut scopes,
         global_bindings.clone(),
@@ -353,11 +374,13 @@ fn eval_err_to_stacktrace(path: &Path, func: Option<&str>, error: EvalError)
         EvalError::EvalPropValueFailed{source, ..} |
         EvalError::EvalCallFailed{source} |
         EvalError::EvalCallArgsFailed{source} |
+        EvalError::InsertStackFrameFailed{source} |
         EvalError::EvalCallFuncFailed{source} |
         EvalError::EvalErrorObjectMsgFailed{source} |
         EvalError::EvalErrorObjectContextFailed{source} |
         EvalError::EvalErrorObjectSourcesFailed{source} |
         EvalError::EvalCatchAsBoolFailed{source} |
+        EvalError::EvalCatchAsErrorFailed{source} |
         EvalError::EvalExprFailed{source} |
         EvalError::EvalPropFailed{source} |
         EvalError::InterpolateStringFailed{source} |
@@ -415,6 +438,12 @@ fn eval_err_to_stacktrace(path: &Path, func: Option<&str>, error: EvalError)
             st
         },
 
+        EvalError::Runtime{err_obj} => {
+            let msg = format!("{err_obj:?}");
+
+            StacktracedErrorMsg{stacktrace: vec![], msg}
+        },
+
         _ => {
             StacktracedErrorMsg{stacktrace: vec![], msg: format!("{error}")}
         },
@@ -424,4 +453,129 @@ fn eval_err_to_stacktrace(path: &Path, func: Option<&str>, error: EvalError)
 struct StacktracedErrorMsg {
     stacktrace: Vec<String>,
     msg: String,
+}
+
+fn render_error_object(file_path: &Path, err_obj: &Object)
+    -> Result<String, String>
+{
+    let mut render = String::new();
+
+    let SourcedValue{v: msg_value, ..} =
+        if let Some(v) = err_obj.get("msg") {
+            v
+        } else {
+            return Err("error object doesn't contain 'msg'".to_string())
+        };
+
+    let msg =
+        if let Value::Str(s) = msg_value {
+            s
+        } else {
+            return Err("error object 'msg' isn't 'string'".to_string())
+        };
+
+    match String::from_utf8(msg.clone()) {
+        Ok(n) => {
+            render += &format!("{n}\n");
+        },
+        Err(_) => {
+            return Err(format!("invalid UTF-8 for message {msg:?}"));
+        },
+    }
+
+    let SourcedValue{v: stack_value, ..} =
+        if let Some(v) = err_obj.get("stack") {
+            v
+        } else {
+            return Err("error object doesn't contain 'stack'".to_string());
+        };
+
+    let items =
+        if let Value::List{items, ..} = stack_value {
+            items
+        } else {
+            return Err("error object 'stack' isn't 'list'".to_string());
+        };
+
+    let items_val = &lock_deref!(items);
+
+    render += "Stacktrace:";
+
+    for item in items_val {
+        let s = render_error_object_stack_frame(file_path, item)?;
+        render += &s;
+    }
+
+    Ok(render)
+}
+
+fn render_error_object_stack_frame(
+    file_path: &Path,
+    stack_frame: &SourcedValue
+)
+    -> Result<String, String>
+{
+    let frame_ref =
+        if let Value::Object{props, ..} = &stack_frame.v {
+            props
+        } else {
+            return Err("stack frame isn't 'object'".to_string());
+        };
+
+    let frame = &lock_deref!(frame_ref);
+
+    let line_val =
+        if let Some(v) = frame.get("line") {
+            v
+        } else {
+            return Err("stack frame doesn't contain 'line'".to_string());
+        };
+
+    let line =
+        if let Value::Int(n) = line_val.v {
+            n
+        } else {
+            return Err("stack frame 'line' isn't 'int'".to_string());
+        };
+
+    let col_val =
+        if let Some(v) = frame.get("col") {
+            v
+        } else {
+            return Err("stack frame doesn't contain 'column'".to_string());
+        };
+
+    let col =
+        if let Value::Int(n) = col_val.v {
+            n
+        } else {
+            return Err("stack frame 'col' isn't 'int'".to_string());
+        };
+
+    let mut func_name = "<root>".to_string();
+    if let Some(v) = frame.get("fn") {
+        match &v.v {
+            // TODO Handle `BuiltinFunc`.
+            Value::Func(func_ref) => {
+                let func = &lock_deref!(func_ref);
+
+                if let Some(n) = &func.name {
+                    func_name = n.to_string();
+                } else {
+                    func_name = "<anonymous function>".to_string();
+                }
+            },
+            _ => {
+                return Err("stack frame 'fn' isn't 'fn'".to_string());
+            },
+        };
+    }
+
+    Ok(format!(
+        "\n  {}:{}:{}: in '{}'",
+        file_path.display(),
+        line,
+        col,
+        func_name,
+    ))
 }

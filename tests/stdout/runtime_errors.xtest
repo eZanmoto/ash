@@ -106,7 +106,9 @@ exit_code: 103
 [] == {}
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/bad_type_equality.ash:1:4: can't apply '==' to 'list' and 'object'
+runtime_errors/bad_type_equality.ash:can't apply '==' to 'list' and 'object'
+Stacktrace:
+  runtime_errors/bad_type_equality.ash:1:4: in '<root>'
 ================================================== op_assign_lhs_not_var
 exit_code: 103
 --------------------------------------------------
@@ -142,7 +144,9 @@ exit_code: 103
 "abc"[5]
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/out_of_string_bounds.ash:1:1: index '5' is outside the string bounds
+runtime_errors/out_of_string_bounds.ash:index '5' is outside the string bounds
+Stacktrace:
+  runtime_errors/out_of_string_bounds.ash:1:1: in '<root>'
 ================================================== out_of_list_bounds
 exit_code: 103
 --------------------------------------------------
@@ -151,28 +155,36 @@ xs[2]
 xs[3]
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/out_of_list_bounds.ash:3:1: index '3' is outside the list bounds
+runtime_errors/out_of_list_bounds.ash:index '3' is outside the list bounds
+Stacktrace:
+  runtime_errors/out_of_list_bounds.ash:3:1: in '<root>'
 ================================================== out_of_list_bounds_assign
 exit_code: 103
 --------------------------------------------------
 $[1, 2, 3][3] = 2
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/out_of_list_bounds_assign.ash:1:1: index '3' is outside the list bounds
+runtime_errors/out_of_list_bounds_assign.ash:index '3' is outside the list bounds
+Stacktrace:
+  runtime_errors/out_of_list_bounds_assign.ash:1:1: in '<root>'
 ================================================== prop_not_found1
 exit_code: 103
 --------------------------------------------------
 {}["a"]
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/prop_not_found1.ash:1:1: object doesn't contain property 'a'
+runtime_errors/prop_not_found1.ash:object doesn't contain property 'a'
+Stacktrace:
+  runtime_errors/prop_not_found1.ash:1:1: in '<root>'
 ================================================== prop_not_found2
 exit_code: 103
 --------------------------------------------------
 {}.a
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/prop_not_found2.ash:1:1: object doesn't contain property 'a'
+runtime_errors/prop_not_found2.ash:object doesn't contain property 'a'
+Stacktrace:
+  runtime_errors/prop_not_found2.ash:1:1: in '<root>'
 ================================================== prop_access_on_non_object
 exit_code: 103
 --------------------------------------------------
@@ -361,7 +373,9 @@ exit_code: 103
 {a, b, c} := {"a": 1, "b": 2}
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/object_destruct_prop_not_found.ash:1:8: object doesn't contain property 'c'
+runtime_errors/object_destruct_prop_not_found.ash:object doesn't contain property 'c'
+Stacktrace:
+  runtime_errors/object_destruct_prop_not_found.ash:1:8: in '<root>'
 ================================================== object_destruct_dup_name1
 exit_code: 103
 --------------------------------------------------
@@ -556,21 +570,27 @@ exit_code: 103
 9_223_372_036_854_775_807 + 1
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/int_add_overflow.ash:1:27: '9223372036854775807 + 1' caused an integer overflow
+runtime_errors/int_add_overflow.ash:'9223372036854775807 + 1' caused an integer overflow
+Stacktrace:
+  runtime_errors/int_add_overflow.ash:1:27: in '<root>'
 ================================================== int_sub_overflow
 exit_code: 103
 --------------------------------------------------
 (-9_223_372_036_854_775_807) - 2
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/int_sub_overflow.ash:1:30: '-9223372036854775807 - 2' caused an integer overflow
+runtime_errors/int_sub_overflow.ash:'-9223372036854775807 - 2' caused an integer overflow
+Stacktrace:
+  runtime_errors/int_sub_overflow.ash:1:30: in '<root>'
 ================================================== int_mul_overflow
 exit_code: 103
 --------------------------------------------------
 9_223_372_036_854_775_807 * 2
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/int_mul_overflow.ash:1:27: '9223372036854775807 * 2' caused an integer overflow
+runtime_errors/int_mul_overflow.ash:'9223372036854775807 * 2' caused an integer overflow
+Stacktrace:
+  runtime_errors/int_mul_overflow.ash:1:27: in '<root>'
 ================================================== fn_equality
 exit_code: 103
 --------------------------------------------------
@@ -579,42 +599,54 @@ fn f() {}
 f == f
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/fn_equality.ash:3:3: can't apply '==' to 'func' and 'func'
+runtime_errors/fn_equality.ash:can't apply '==' to 'func' and 'func'
+Stacktrace:
+  runtime_errors/fn_equality.ash:3:3: in '<root>'
 ================================================== type_mismatch_equality1
 exit_code: 103
 --------------------------------------------------
 [1] == [true]
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/type_mismatch_equality1.ash:1:5: can't apply '==' to 'int' and 'bool' (at [0])
+runtime_errors/type_mismatch_equality1.ash:can't apply '==' to 'int' and 'bool' (at [0])
+Stacktrace:
+  runtime_errors/type_mismatch_equality1.ash:1:5: in '<root>'
 ================================================== type_mismatch_equality2
 exit_code: 103
 --------------------------------------------------
 [[1]] == [[true]]
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/type_mismatch_equality2.ash:1:7: can't apply '==' to 'int' and 'bool' (at [0][0])
+runtime_errors/type_mismatch_equality2.ash:can't apply '==' to 'int' and 'bool' (at [0][0])
+Stacktrace:
+  runtime_errors/type_mismatch_equality2.ash:1:7: in '<root>'
 ================================================== type_mismatch_equality3
 exit_code: 103
 --------------------------------------------------
 [1] == [[true]]
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/type_mismatch_equality3.ash:1:5: can't apply '==' to 'int' and 'list' (at [0])
+runtime_errors/type_mismatch_equality3.ash:can't apply '==' to 'int' and 'list' (at [0])
+Stacktrace:
+  runtime_errors/type_mismatch_equality3.ash:1:5: in '<root>'
 ================================================== type_mismatch_equality4
 exit_code: 103
 --------------------------------------------------
 {"a": 1} == {"a": true}
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/type_mismatch_equality4.ash:1:10: can't apply '==' to 'int' and 'bool' (at .'a')
+runtime_errors/type_mismatch_equality4.ash:can't apply '==' to 'int' and 'bool' (at .'a')
+Stacktrace:
+  runtime_errors/type_mismatch_equality4.ash:1:10: in '<root>'
 ================================================== type_mismatch_equality5
 exit_code: 103
 --------------------------------------------------
 {"a": [1]} == {"a": [true]}
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/type_mismatch_equality5.ash:1:12: can't apply '==' to 'int' and 'bool' (at .'a'[0])
+runtime_errors/type_mismatch_equality5.ash:can't apply '==' to 'int' and 'bool' (at .'a'[0])
+Stacktrace:
+  runtime_errors/type_mismatch_equality5.ash:1:12: in '<root>'
 ================================================== cannot_catch_language_error
 exit_code: 103
 --------------------------------------------------
@@ -702,12 +734,16 @@ exit_code: 103
 ""!{"msg": ""}
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/error_context_msg.ash:1:1: error object context can't contain 'msg'
+runtime_errors/error_context_msg.ash:error object context can't contain 'msg'
+Stacktrace:
+  runtime_errors/error_context_msg.ash:1:1: in '<root>'
 ================================================== error_context_sources
 exit_code: 103
 --------------------------------------------------
 ""!{"sources": ""}
 --------------------------------------------------
 --------------------------------------------------
-runtime_errors/error_context_sources.ash:1:1: error object context can't contain 'sources'
+runtime_errors/error_context_sources.ash:error object context can't contain 'sources'
+Stacktrace:
+  runtime_errors/error_context_sources.ash:1:1: in '<root>'
 ==================================================

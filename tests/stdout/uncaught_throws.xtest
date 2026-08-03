@@ -5,6 +5,18 @@ throw "my error"
 --------------------------------------------------
 --------------------------------------------------
 uncaught_throws/root_level.ash:my error
+Stacktrace:
+  uncaught_throws/root_level.ash:1:7: in '<root>'
+================================================== root_level_second_line
+exit_code: 103
+--------------------------------------------------
+x := 1
+throw "my error"
+--------------------------------------------------
+--------------------------------------------------
+uncaught_throws/root_level_second_line.ash:my error
+Stacktrace:
+  uncaught_throws/root_level_second_line.ash:2:7: in '<root>'
 ================================================== one_level
 exit_code: 103
 --------------------------------------------------
@@ -18,6 +30,7 @@ f()
 uncaught_throws/one_level.ash:my error
 Stacktrace:
   uncaught_throws/one_level.ash:5:1: in '<root>'
+  uncaught_throws/one_level.ash:2:11: in 'f'
 ================================================== two_levels
 exit_code: 103
 --------------------------------------------------
@@ -34,14 +47,25 @@ g()
 --------------------------------------------------
 uncaught_throws/two_levels.ash:my error
 Stacktrace:
-  uncaught_throws/two_levels.ash:2:5: in 'g'
   uncaught_throws/two_levels.ash:9:1: in '<root>'
-================================================== interp_str
+  uncaught_throws/two_levels.ash:2:5: in 'g'
+  uncaught_throws/two_levels.ash:6:11: in 'f'
+================================================== object_function
 exit_code: 103
 --------------------------------------------------
-s := "details"
-throw $"my error: ${s}"
+x := {
+    "test": fn () {
+        throw "my error"
+    },
+}
+
+# TODO This should render as `x.test` in the
+# stacktrace.
+x.test()
 --------------------------------------------------
 --------------------------------------------------
-uncaught_throws/interp_str.ash:my error: details
+uncaught_throws/object_function.ash:my error
+Stacktrace:
+  uncaught_throws/object_function.ash:9:1: in '<root>'
+  uncaught_throws/object_function.ash:3:15: in '<anonymous function>'
 ==================================================
