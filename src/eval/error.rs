@@ -2,7 +2,6 @@
 // Use of this source code is governed by an MIT
 // licence that can be found in the LICENCE file.
 
-use std::collections::BTreeMap;
 use std::num::TryFromIntError;
 use std::string::FromUtf8Error;
 
@@ -11,11 +10,8 @@ use snafu::prelude::*;
 use crate::ast::BinaryOp;
 use crate::ast::UnaryOp;
 use crate::eval::Value;
-use crate::value;
 use crate::value::Object;
 use crate::value::SourcedValue;
-// FIXME Move functions that use `Mutability`.
-use super::scope::Mutability;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -565,73 +561,6 @@ pub enum Error {
         #[snafu(source(from(Error, Box::new)))]
         source: Box<Error>,
     },
-}
-
-// FIXME Move `new_runtime_error` into `src/eval/mod.rs`.
-pub fn new_runtime_error(
-    msg: Vec<u8>,
-    func: Option<SourcedValue>,
-    line: usize,
-    col: usize,
-)
-    -> Error
-{
-    let err_obj = new_runtime_error_object(msg, func, line, col);
-
-    Error::Runtime{err_obj}
-}
-
-pub fn new_runtime_error_object(
-    msg: Vec<u8>,
-    func: Option<SourcedValue>,
-    line: usize,
-    col: usize,
-)
-    -> Object
-{
-    let frame = new_error_stack_frame(func, line, col);
-
-    BTreeMap::<String, SourcedValue>::from_iter(vec![
-        (
-            "msg".to_string(),
-            value::new_str(msg),
-        ),
-        (
-            "stack".to_string(),
-            value::new_list(vec![frame], &Mutability::Const),
-        ),
-    ])
-}
-
-pub fn new_error_stack_frame(
-    func: Option<SourcedValue>,
-    line: usize,
-    col: usize,
-) -> SourcedValue {
-    let mut props = vec![
-        // TODO Add source file.
-        (
-            "line".to_string(),
-            // TODO Handle this casting error.
-            #[allow(clippy::cast_possible_wrap)]
-            value::new_int(line as i64),
-        ),
-        (
-            "col".to_string(),
-            // TODO Handle this casting error.
-            #[allow(clippy::cast_possible_wrap)]
-            value::new_int(col as i64),
-        ),
-    ];
-
-    if let Some(f) = func {
-        props.push(("fn".to_string(), f));
-    }
-
-    value::new_object(
-        BTreeMap::<String, SourcedValue>::from_iter(props),
-        &Mutability::Const,
-    )
 }
 
 pub fn render_type(v: &Value) -> String {

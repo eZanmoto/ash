@@ -512,8 +512,8 @@ fn eval_expr(
     let new_loc_err = |source| {
         Err(Error::AtLoc{source: Box::new(source), line: *line, col: *col})
     };
-    let new_runtime_error = |msg: String| {
-        Err(error::new_runtime_error(
+    let new_runtime_error_from_msg = |msg: String| {
+        Err(new_runtime_error(
             msg.into(),
             context.cur_func.clone(),
             *line,
@@ -629,7 +629,7 @@ fn eval_expr(
                             },
                             #[allow(clippy::uninlined_format_args)]
                             None => {
-                                return new_runtime_error(format!(
+                                return new_runtime_error_from_msg(format!(
                                     "index '{}' is outside the string bounds",
                                     index,
                                 ))
@@ -647,7 +647,7 @@ fn eval_expr(
                         match lock_deref!(items).get(index) {
                             Some(v) => v.clone(),
                             #[allow(clippy::uninlined_format_args)]
-                            None => return new_runtime_error(format!(
+                            None => return new_runtime_error_from_msg(format!(
                                     "index '{}' is outside the list bounds",
                                     index,
                             )),
@@ -669,7 +669,7 @@ fn eval_expr(
                                 value.v.clone()
                             },
                             None => {
-                                return new_runtime_error(format!(
+                                return new_runtime_error_from_msg(format!(
                                     "object doesn't contain property '{name}'",
                                 ));
                             },
@@ -828,7 +828,7 @@ fn eval_expr(
                         name: name.clone(),
                     })
                 } else {
-                    new_runtime_error(format!(
+                    new_runtime_error_from_msg(format!(
                         "object doesn't contain property '{name}'",
                     ))
                 };
@@ -865,12 +865,12 @@ fn eval_expr(
             for (name, value) in context_vals {
                 if name == "msg" {
                     let s = "error object context can't contain 'msg'";
-                    return new_runtime_error(s.to_string());
+                    return new_runtime_error_from_msg(s.to_string());
                 }
 
                 if name == "sources" {
                     let s = "error object context can't contain 'sources'";
-                    return new_runtime_error(s.to_string());
+                    return new_runtime_error_from_msg(s.to_string());
                 }
 
                 props.insert(name, value);
@@ -1197,8 +1197,8 @@ fn apply_binary_operation(
             col: *col,
         }
     };
-    let new_runtime_error = |msg: String| {
-        error::new_runtime_error(
+    let new_runtime_error_from_msg = |msg: String| {
+        new_runtime_error(
             msg.into(),
             // FIXME Add current function to context.
             None,
@@ -1207,7 +1207,7 @@ fn apply_binary_operation(
         )
     };
     let new_int_overflow = |lhs: &i64, rhs: &i64| {
-        error::new_runtime_error(
+        new_runtime_error(
             format!(
                 "'{} {} {}' caused an integer overflow",
                 lhs,
@@ -1237,7 +1237,7 @@ fn apply_binary_operation(
                         msg = format!(" (at {path})");
                     }
 
-                    Err(new_runtime_error(format!(
+                    Err(new_runtime_error_from_msg(format!(
                         "can't apply '{}' to '{}' and '{}'{}",
                         error::bin_op_symbol(op),
                         lhs_type,
@@ -1608,7 +1608,7 @@ fn eval_expr_to_error_object(
                 return new_loc_err(Error::InvalidErrorStrMsgIsEmpty);
             }
 
-            Ok(error::new_runtime_error_object(
+            Ok(new_runtime_error_object(
                 msg,
                 context.cur_func.clone(),
                 *line,
@@ -1664,7 +1664,42 @@ fn eval_expr_to_error_object(
     })
 }
 
-fn new_error_stack_frame(
+pub fn new_runtime_error(
+    msg: Vec<u8>,
+    func: Option<SourcedValue>,
+    line: usize,
+    col: usize,
+)
+    -> Error
+{
+    let err_obj = new_runtime_error_object(msg, func, line, col);
+
+    Error::Runtime{err_obj}
+}
+
+pub fn new_runtime_error_object(
+    msg: Vec<u8>,
+    func: Option<SourcedValue>,
+    line: usize,
+    col: usize,
+)
+    -> Object
+{
+    let frame = new_error_stack_frame(func, line, col);
+
+    BTreeMap::<String, SourcedValue>::from_iter(vec![
+        (
+            "msg".to_string(),
+            value::new_str(msg),
+        ),
+        (
+            "stack".to_string(),
+            value::new_list(vec![frame], &Mutability::Const),
+        ),
+    ])
+}
+
+pub fn new_error_stack_frame(
     func: Option<SourcedValue>,
     line: usize,
     col: usize,

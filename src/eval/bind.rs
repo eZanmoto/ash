@@ -11,9 +11,6 @@ use snafu::ResultExt;
 use crate::ast::*;
 use crate::eval;
 use eval::EvaluationContext;
-// FIXME This import of `error` should be removed by moving `new_runtime_error`
-// to `crate::eval`.
-use super::error;
 #[allow(clippy::wildcard_imports)]
 use super::error::*;
 use super::error::Error;
@@ -90,7 +87,7 @@ pub fn bind_next(
     let new_runtime_error = |msg: String| {
         let (line, col) = loc;
 
-        error::new_runtime_error(
+        eval::new_runtime_error(
             msg.into(),
             context.cur_func.clone(),
             *line,
@@ -667,7 +664,7 @@ fn bind_object_prop(
     let new_runtime_error = |msg: String| {
         let (line, col) = prop_name.1;
 
-        error::new_runtime_error(
+        eval::new_runtime_error(
             msg.into(),
             context.cur_func.clone(),
             *line,
