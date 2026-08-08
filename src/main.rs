@@ -506,6 +506,37 @@ fn render_error_object(file_path: &Path, err_obj: &Object)
         render += &s;
     }
 
+    if let Some(v) = err_obj.get("sources") {
+        let SourcedValue{v: sources_value, ..} = v;
+
+        let sources =
+            if let Value::List{items, ..} = sources_value {
+                items
+            } else {
+                return Err("error object 'sources' isn't 'list'".to_string());
+            };
+
+        let source_vals = &lock_deref!(sources);
+
+        for source_val in source_vals {
+            let err_obj =
+                if let Value::Object{props, ..} = &source_val.v {
+                    props
+                } else {
+                    return Err(
+                        "error object source isn't 'object'".to_string(),
+                    );
+                };
+
+            let err_obj_val = &lock_deref!(err_obj);
+
+            let s = render_error_object(file_path, err_obj_val)?;
+
+            render += "\n\nCaused by: ";
+            render += &s;
+        }
+    }
+
     Ok(render)
 }
 
