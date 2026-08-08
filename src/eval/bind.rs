@@ -98,6 +98,7 @@ pub fn bind_next(
     match raw_lhs {
         RawExpr::Var{name} => {
             bind_next_name(
+                context,
                 scopes,
                 names_in_binding,
                 name,
@@ -128,7 +129,7 @@ pub fn bind_next(
 
                     let lhs_val = &mut lock_deref!(items)[n as usize];
 
-                    binary_operation_assign(lhs_val, rhs, op)
+                    binary_operation_assign(context, lhs_val, rhs, op)
                         .context(BinOpAssignListIndexFailed)?;
 
                     Ok(())
@@ -149,7 +150,7 @@ pub fn bind_next(
                             .context(EvalObjectIndexFailed)?;
 
                     if let Some(slot) = lock_deref!(props).get_mut(&name) {
-                        binary_operation_assign(slot, rhs, op)
+                        binary_operation_assign(context, slot, rhs, op)
                             .context(BinOpAssignObjectIndexFailed)?;
 
                         return Ok(());
@@ -240,7 +241,7 @@ pub fn bind_next(
                     }
 
                     if let Some(slot) = lock_deref!(props).get_mut(name) {
-                        binary_operation_assign(slot, rhs, op)
+                        binary_operation_assign(context, slot, rhs, op)
                             .context(BinOpAssignPropFailed)?;
 
                         return Ok(());
@@ -338,6 +339,7 @@ pub fn bind_next(
 }
 
 pub fn binary_operation_assign(
+    context: &EvaluationContext,
     lhs: &mut SourcedValue,
     rhs: SourcedValue,
     op: Option<(BinaryOp, Location)>,
@@ -346,6 +348,7 @@ pub fn binary_operation_assign(
     if let Some((op, op_loc)) = op {
         let v =
             eval::apply_binary_operation(
+                context,
                 &op,
                 &op_loc,
                 &lhs.v,
@@ -362,6 +365,7 @@ pub fn binary_operation_assign(
 }
 
 pub fn bind_name(
+    context: &EvaluationContext,
     scopes: &mut ScopeStack,
     name: &str,
     name_loc: &(usize, usize),
@@ -370,12 +374,22 @@ pub fn bind_name(
 )
     -> Result<()>
 {
-    let names = &mut HashSet::new();
-
-    bind_next_name(scopes, names, name, name_loc, rhs, None, bind_type)
+    bind_next_name(
+        context,
+        scopes,
+        &mut HashSet::new(),
+        name,
+        name_loc,
+        rhs,
+        None,
+        bind_type,
+    )
 }
 
+// TODO Consider how to group certain arguments.
+#[allow(clippy::too_many_arguments)]
 fn bind_next_name(
+    context: &EvaluationContext,
     scopes: &mut ScopeStack,
     names_in_binding: &mut HashSet<String>,
     name: &str,
@@ -439,6 +453,7 @@ fn bind_next_name(
 
                 let raw_v =
                     eval::apply_binary_operation(
+                        context,
                         &op,
                         &op_loc,
                         &lhs_val.v,
@@ -591,6 +606,7 @@ fn bind_object(
                             .collect();
 
                     bind_next_name(
+                        context,
                         scopes,
                         names_in_binding,
                         &prop_name,

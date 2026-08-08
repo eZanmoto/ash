@@ -318,7 +318,14 @@ fn eval_stmt(
             // TODO It was considered whether function parameters should be
             // bound as constant declarations. For now, the decision is to add
             // a linting check for assignments to function parameters.
-            bind::bind_name(scopes, name, loc, func, BindType::VarDeclaration)
+            bind::bind_name(
+                context,
+                scopes,
+                name,
+                loc,
+                func,
+                BindType::VarDeclaration,
+            )
                 .context(DeclareFunctionFailed)?;
         },
 
@@ -589,7 +596,13 @@ fn eval_expr(
             let rhs_val = eval_expr(context, scopes, rhs)
                 .context(EvalBinOpRhsFailed)?;
 
-            let v = apply_binary_operation(op, op_loc, &lhs_val.v, &rhs_val.v)
+            let v = apply_binary_operation(
+                context,
+                op,
+                op_loc,
+                &lhs_val.v,
+                &rhs_val.v,
+            )
                 .context(ApplyBinOpFailed)?;
 
             Ok(value::new_val_ref_with_no_source(v))
@@ -1178,6 +1191,7 @@ fn apply_boolean_operation(
 
 #[allow(clippy::too_many_lines)]
 fn apply_binary_operation(
+    context: &EvaluationContext,
     op: &BinaryOp,
     op_loc: &Location,
     lhs: &Value,
@@ -1200,25 +1214,18 @@ fn apply_binary_operation(
     let new_runtime_error_from_msg = |msg: String| {
         new_runtime_error(
             msg.into(),
-            // FIXME Add current function to context.
-            None,
+            context.cur_func.clone(),
             *line,
             *col,
         )
     };
     let new_int_overflow = |lhs: &i64, rhs: &i64| {
-        new_runtime_error(
-            format!(
-                "'{} {} {}' caused an integer overflow",
-                lhs,
-                error::bin_op_symbol(op),
-                rhs,
-            ).into(),
-            // FIXME Add current function to context.
-            None,
-            *line,
-            *col,
-        )
+        new_runtime_error_from_msg(format!(
+            "'{} {} {}' caused an integer overflow",
+            lhs,
+            error::bin_op_symbol(op),
+            rhs,
+        ))
     };
 
     match op {
