@@ -236,6 +236,11 @@ pub enum Error {
         render_type(value),
     ))]
     InvalidErrorObjectSourcesNotList{value: Value},
+    #[snafu(display(
+        "error object 'stack' can only be 'list', got '{}'",
+        render_type(value),
+    ))]
+    InvalidErrorObjectStackNotList{value: Value},
     #[snafu(display("{}", msg))]
     BuiltinFuncErr{msg: String},
 

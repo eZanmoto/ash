@@ -173,6 +173,11 @@ print(err)
             "col": 13,
             "line": 9,
         },
+        {
+            "col": 11,
+            "fn": <function 'f'>,
+            "line": 2,
+        },
     ],
 }
 ================================================== throw_error_object_manual
@@ -196,6 +201,11 @@ print(err)
         {
             "col": 13,
             "line": 10,
+        },
+        {
+            "col": 11,
+            "fn": <function 'f'>,
+            "line": 2,
         },
     ],
 }
@@ -222,6 +232,11 @@ print(err)
         {
             "col": 13,
             "line": 10,
+        },
+        {
+            "col": 11,
+            "fn": <function 'f'>,
+            "line": 3,
         },
     ],
 }

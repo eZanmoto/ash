@@ -1625,6 +1625,7 @@ fn eval_expr_to_error_object(
 
         Value::Object{props, ..} => {
             let props_val = &lock_deref!(props);
+            let mut props_val = props_val.clone();
 
             let SourcedValue{v: msg_value, ..} =
                 if let Some(v) = props_val.get("msg") {
@@ -1658,7 +1659,32 @@ fn eval_expr_to_error_object(
                 }
             }
 
-            Ok(props_val.clone())
+            let frame = new_error_stack_frame(
+                context.cur_func.clone(),
+                *line,
+                *col,
+            );
+
+            if let Some(v) = props_val.get("stack") {
+                let SourcedValue{v: stack_value, ..} = v;
+
+                if let Value::List{items, ..} = stack_value {
+                    let items_val = &mut lock_deref!(items);
+
+                    items_val.insert(0, frame);
+                } else {
+                    return new_loc_err(Error::InvalidErrorObjectStackNotList{
+                        value: stack_value.clone(),
+                    });
+                }
+            } else {
+                props_val.insert(
+                    "stack".to_string(),
+                    value::new_list(vec![frame], &Mutability::Const),
+                );
+            }
+
+            Ok(props_val)
         },
 
         value => {
