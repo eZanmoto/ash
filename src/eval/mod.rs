@@ -906,6 +906,13 @@ fn eval_expr(
                 value::new_list(sources_value, &Mutability::Const),
             );
 
+            if !props.contains_key("stack") {
+                props.insert(
+                    "stack".to_string(),
+                    value::new_list(vec![], &Mutability::Const),
+                );
+            }
+
             Ok(value::new_object(props, &Mutability::Const))
         },
 

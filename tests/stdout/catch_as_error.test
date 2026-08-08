@@ -155,7 +155,6 @@ fn f() {
     throw "my error"!{
         "a": 1,
         "b": 2,
-        "stack": [],
     }
 }
 
@@ -171,7 +170,7 @@ print(err)
     "stack": [
         {
             "col": 13,
-            "line": 9,
+            "line": 8,
         },
         {
             "col": 11,
@@ -215,7 +214,6 @@ fn f() {
     throw $"my error: ${s}"!{
         "a": 1,
         "b": 2,
-        "stack": [],
     }
 }
 
@@ -231,7 +229,7 @@ print(err)
     "stack": [
         {
             "col": 13,
-            "line": 10,
+            "line": 9,
         },
         {
             "col": 11,

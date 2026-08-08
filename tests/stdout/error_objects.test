@@ -5,6 +5,8 @@ print("my error"!{})
     "msg": my error,
     "sources": [
     ],
+    "stack": [
+    ],
 }
 ================================================== context
 print("my error"!{
@@ -17,6 +19,8 @@ print("my error"!{
     "b": 2,
     "msg": my error,
     "sources": [
+    ],
+    "stack": [
     ],
 }
 ================================================== one_source
@@ -31,7 +35,11 @@ print("my error"!(err1){})
             "msg": error one,
             "sources": [
             ],
+            "stack": [
+            ],
         },
+    ],
+    "stack": [
     ],
 }
 ================================================== two_sources
@@ -47,12 +55,18 @@ print("my error"!(err1, err2){})
             "msg": error one,
             "sources": [
             ],
+            "stack": [
+            ],
         },
         {
             "msg": error two,
             "sources": [
             ],
+            "stack": [
+            ],
         },
+    ],
+    "stack": [
     ],
 }
 ================================================== two_sources_and_ctx
@@ -73,12 +87,18 @@ print("my error"!(err1, err2){
             "msg": error one,
             "sources": [
             ],
+            "stack": [
+            ],
         },
         {
             "msg": error two,
             "sources": [
             ],
+            "stack": [
+            ],
         },
+    ],
+    "stack": [
     ],
 }
 ==================================================
