@@ -3,11 +3,13 @@
 // licence that can be found in the LICENCE file.
 
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::iter::FromIterator;
 use std::sync::Arc;
 use std::sync::Mutex;
 
 use snafu::ResultExt;
+use snafu::Snafu;
 
 use super::fns;
 use crate::eval::builtins::TypeFunctions;
@@ -15,52 +17,81 @@ use crate::eval::error::AssertArgsFailed;
 use crate::eval::error::AssertStrFailed;
 use crate::eval::error::AssertThisFailed;
 use crate::eval::error::CastFailed;
-use crate::eval::error::Result;
+use crate::eval::error::Result as EvalResult;
 use crate::eval::value;
 use crate::eval::value::ObjectRef;
 use crate::eval::value::SourcedValue;
 use crate::eval::value::Value;
+
+pub fn append(
+    type_funcs: &mut TypeFunctions,
+    new_type_funcs: HashMap<String, SourcedValue>,
+) -> Result<(), Error> {
+    for (name, tf) in new_type_funcs {
+        if let Some(suffix) = name.strip_prefix("objects_") {
+            let mut objects = type_funcs.objects.try_lock().unwrap();
+
+            objects.insert(suffix.to_string(), tf);
+        } else {
+            return Err(Error::NoSupportedTypeFuncPrefixFound{
+                type_func_name: name,
+            });
+        }
+    }
+
+    Ok(())
+}
+
+#[derive(Debug, Snafu)]
+#[snafu(context(suffix(false)))]
+pub enum Error {
+    #[snafu(display(
+        "no supported type function prefix found on {}",
+        type_func_name,
+    ))]
+    NoSupportedTypeFuncPrefixFound{type_func_name: String},
+}
 
 pub fn type_functions() -> TypeFunctions {
     TypeFunctions{
         bools: new_func_map(vec![
             (
                 "type".to_string(),
-                value::new_built_in_func("bool->type".to_string(), any_type),
+                value::new_built_in_func("bool_type".to_string(), any_type),
             ),
         ]),
         ints: new_func_map(vec![
             (
                 "type".to_string(),
-                value::new_built_in_func("int->type".to_string(), any_type),
+                value::new_built_in_func("int_type".to_string(), any_type),
             ),
         ]),
         strs: new_func_map(vec![
             (
                 "len".to_string(),
-                value::new_built_in_func("str->len".to_string(), str_len),
+                value::new_built_in_func("str_len".to_string(), str_len),
             ),
             (
                 "type".to_string(),
-                value::new_built_in_func("str->type".to_string(), any_type),
+                value::new_built_in_func("str_type".to_string(), any_type),
             ),
         ]),
         lists: new_func_map(vec![
             (
                 "type".to_string(),
-                value::new_built_in_func("list->type".to_string(), any_type),
+                value::new_built_in_func("list_type".to_string(), any_type),
             ),
         ]),
         objects: new_func_map(vec![
             (
                 "type".to_string(),
-                value::new_built_in_func("object->type".to_string(), any_type),
+                value::new_built_in_func("object_type".to_string(), any_type),
             ),
         ]),
         funcs: new_func_map(vec![
             (
                 "type".to_string(),
-                value::new_built_in_func("func->type".to_string(), any_type),
+                value::new_built_in_func("fn_type".to_string(), any_type),
             ),
         ]),
     }
@@ -74,7 +105,7 @@ pub fn new_func_map(funcs: Vec<(String, SourcedValue)>) -> ObjectRef {
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn str_len(this: Option<SourcedValue>, vs: Vec<SourcedValue>)
-    -> Result<SourcedValue>
+    -> EvalResult<SourcedValue>
 {
     fns::assert_args("len", 0, &vs)
         .context(AssertArgsFailed)?;
@@ -93,7 +124,7 @@ pub fn str_len(this: Option<SourcedValue>, vs: Vec<SourcedValue>)
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn any_type(this: Option<SourcedValue>, vs: Vec<SourcedValue>)
-    -> Result<SourcedValue>
+    -> EvalResult<SourcedValue>
 {
     fns::assert_args("type", 0, &vs)
         .context(AssertArgsFailed)?;

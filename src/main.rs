@@ -7,6 +7,7 @@ extern crate assert_matches;
 extern crate snafu;
 
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::Error as IoError;
@@ -25,16 +26,20 @@ use lalrpop_util::ParseError;
 use snafu::ResultExt;
 use snafu::Snafu;
 
+use ast::Location;
 use ast::RawExpr;
 use builtins::fns;
 use builtins::type_functions;
+use builtins::type_functions::Error as TypeFunctionsError;
 use eval::builtins::Builtins;
+use eval::builtins::TypeFunctions;
 use eval::EvaluationContext;
 use eval::error::Error as EvalError;
 use eval::value;
 use eval::value::Object;
 use eval::value::SourcedValue;
 use eval::value::Value;
+use eval::scope::Mutability;
 use eval::scope::ScopeStack;
 use lexer::Lexer;
 use lexer::LexError;
@@ -79,6 +84,30 @@ fn main() {
             match e {
                 Error::GetCurrentDirFailed{source} => {
                     format!(" couldn't get current directory: {source}")
+                },
+                Error::AppendTypeFuncsFailed{source} => {
+                    format!(
+                        " dev error: couldn't append type functions: {source}",
+                    )
+                },
+                Error::DeclareTypeFuncFailed{loc, name} => {
+                    format!(
+                        " dev error: couldn't declare type function '{name}': \
+                            already defined at {loc:?}",
+                    )
+                },
+                Error::GetTypeFuncFailed{name} => {
+                    format!(
+                        " dev error: couldn't get type function '{name}' \
+                            after type functions were evaluated",
+                    )
+                },
+                Error::TypeFuncIsNotFunc{name} => {
+                    // TODO Output the type that `name` was defined as.
+                    format!(
+                        " dev error: type function '{name}' \
+                            was not defined as a function",
+                    )
                 },
                 Error::ReadScriptFailed{path, source} => {
                     let p = path.to_string_lossy();
@@ -127,6 +156,22 @@ fn main() {
 }
 
 fn run(cur_rel_script_path: &Path) -> Result<(), Error> {
+    let global_bindings = vec![
+        (
+            RawExpr::Var{name: "print".to_string()},
+            value::new_built_in_func("print".to_string(), fns::print),
+        ),
+    ];
+    let mut type_funcs = type_functions::type_functions();
+
+    let new_tfs = new_type_funcs(
+        type_funcs.clone(),
+        global_bindings.clone(),
+    )?;
+
+    type_functions::append(&mut type_funcs, new_tfs)
+        .context(AppendTypeFuncsFailed)?;
+
     let cur_script_dir = env::current_dir()
         .context(GetCurrentDirFailed)?;
     let mut cur_script_path = cur_script_dir.clone();
@@ -135,14 +180,6 @@ fn run(cur_rel_script_path: &Path) -> Result<(), Error> {
     let src = fs::read_to_string(&cur_script_path)
         .context(ReadScriptFailed{path: cur_script_path.clone()})?;
 
-    let global_bindings = vec![
-        (
-            RawExpr::Var{name: "print".to_string()},
-            value::new_built_in_func("print".to_string(), fns::print),
-        ),
-    ];
-
-    let mut scopes = ScopeStack::new(vec![]);
     let lexer = Lexer::new(&src);
     let ast =
         match ProgParser::new().parse(lexer) {
@@ -158,12 +195,12 @@ fn run(cur_rel_script_path: &Path) -> Result<(), Error> {
         &EvaluationContext{
             builtins: &Builtins{
                 std: Arc::new(Mutex::new(BTreeMap::new())),
-                type_functions: type_functions::type_functions(),
+                type_functions: type_funcs,
             },
             cur_script_dir,
             cur_func: None,
         },
-        &mut scopes,
+        &mut ScopeStack::new(vec![]),
         global_bindings.clone(),
         &ast,
     )
@@ -172,11 +209,107 @@ fn run(cur_rel_script_path: &Path) -> Result<(), Error> {
     Ok(())
 }
 
+fn new_type_funcs(
+    type_funcs: TypeFunctions,
+    global_bindings: Vec<(RawExpr, SourcedValue)>,
+) -> Result<HashMap<String, SourcedValue>, Error> {
+    let type_func_defns = r#"
+        # We define type functions as named functions so that they'll have
+        # proper names with reflection. We store these in distinctly named
+        # `<type>s_<func>` variables to pass them from Ash to the actual
+        # `TypeFunctions` values, in order to prevent shadowing.
+
+        # TODO Replace this with the final `object_match` implementation - we
+        # use the current implementation to test the mechanism for using Ash to
+        # define built-in functions.
+        fn object_match(that) {
+            print("TODO")
+        }
+
+        objects_match = object_match;
+    "#;
+
+    let lexer = Lexer::new(type_func_defns);
+    let ast =
+        match ProgParser::new().parse(lexer) {
+            Ok(v) => {
+                v
+            },
+            Err(e) => {
+                return Err(Error::ParseFailed{src: e});
+            },
+        };
+
+    let mut scopes = ScopeStack::new(vec![]);
+    scopes = scopes.new_from_push(HashMap::new());
+
+    let var_names = vec!["objects_match".to_string()];
+    for name in &var_names {
+        let result = scopes.declare(
+            name,
+            (0, 0),
+            value::new_null(),
+            Mutability::Var,
+        );
+
+        if let Err(loc) = result {
+            return Err(Error::DeclareTypeFuncFailed{
+                loc,
+                name: name.to_string(),
+            });
+        }
+    }
+
+    eval::eval_prog(
+        &EvaluationContext{
+            builtins: &Builtins{
+                std: Arc::new(Mutex::new(BTreeMap::new())),
+                type_functions: type_funcs,
+            },
+            // TODO Handle this appropriately when reflection imports are added
+            // - see the definition of `cur_script_dir` on `EvaluationContext`
+            // for more details.
+            cur_script_dir: String::new().into(),
+            cur_func: None,
+        },
+        &mut scopes,
+        global_bindings,
+        &ast,
+    )
+        // TODO Consider adding `EvalTypeFuncsFailed` variant which doesn't
+        // carry a `path`.
+        .context(EvalFailed{path: "<type_funcs>"})?;
+
+    let mut type_funcs = HashMap::new();
+    for name in var_names {
+        if let Some(v) = scopes.get(&name) {
+            if let Value::Func{..} = v.v {
+            } else {
+                return Err(Error::TypeFuncIsNotFunc{
+                    name: name.to_string(),
+                });
+            }
+
+            type_funcs.insert(name, v);
+        } else {
+            return Err(Error::GetTypeFuncFailed{
+                name: name.to_string(),
+            });
+        }
+    }
+
+    Ok(type_funcs)
+}
+
 #[derive(Debug, Snafu)]
 #[snafu(context(suffix(false)))]
 #[allow(clippy::enum_variant_names)]
 enum Error {
     GetCurrentDirFailed{source: IoError},
+    AppendTypeFuncsFailed{source: TypeFunctionsError},
+    DeclareTypeFuncFailed{loc: Location, name: String},
+    GetTypeFuncFailed{name: String},
+    TypeFuncIsNotFunc{name: String},
     ReadScriptFailed{path: PathBuf, source: IoError},
     // We add `ParseError` as a `src` value rather than `source` because it
     // doesn't satisfy the error constraints required by `Snafu`.

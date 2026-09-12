@@ -11,6 +11,7 @@ pub struct Builtins {
     pub type_functions: TypeFunctions,
 }
 
+#[derive(Clone)]
 pub struct TypeFunctions {
     pub bools: ObjectRef,
     pub ints: ObjectRef,
