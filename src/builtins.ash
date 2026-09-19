@@ -21,6 +21,11 @@ fn object_match(that) {
         [err, rest] := stack->pop();
         stack = rest
 
+        [sources, ok] := ? err.sources
+        if ok {
+            stack += sources
+        }
+
         if err->err_match(that) {
             return [err, true]
         }
