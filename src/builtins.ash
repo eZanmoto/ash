@@ -3,11 +3,84 @@
 # `<type>s_<func>` variables to pass them from Ash to the actual
 # `TypeFunctions` values, in order to prevent shadowing.
 
-# TODO Replace this with the final `object_match` implementation - we
-# use the current implementation to test the mechanism for using Ash to
-# define built-in functions.
+# `object_match(err_obj, shape)` returns `[matched_obj, true]` iff `err_obj` or
+# one of its (recursive) `sources` matches `shape`, or `[null, false]`
+# otherwise.
+#
+# An error object matches a shape iff their `code` and `fn` properties are
+# equal. If an object doesn't match the shape then its sources will be checked
+# for equality in a depth-first order. The first object that matches the shape
+# will be returned.
 fn object_match(that) {
-    print("TODO")
+    if that::len() == 0 {
+        throw "target error must contain 'code' and/or 'fn'"
+    }
+
+    stack $:= [this]
+    while stack::len() > 0 {
+        [err, rest] := stack->pop();
+        stack = rest
+
+        if err->err_match(that) {
+            return [err, true]
+        }
+    }
+
+    return [null, false]
+}
+
+# `pop` returns `[last, rest]`, where `last` is the last element of `stack` and
+# `rest` is the list of items before it, or `[]` if `stack` only contains one
+# item.
+#
+# TODO Allow `[a, b..] = xs` when `xs` only contains one item.
+fn pop(stack) {
+    len := stack::len()
+    last := stack[len - 1]
+
+    if len == 1 {
+        return [last, []]
+    }
+
+    return [last, stack[0:len - 1]]
+}
+
+fn err_match(src_err, tgt_err) {
+    [_, ok] := ? src_err["fn"]
+    if !ok {
+        throw "source error doesn't contain 'fn'"
+    }
+
+    for [prop_name, that_prop] in tgt_err {
+        if prop_name == "code" {
+            tgt_code := that_prop
+
+            [src_code, ok] := ? src_err.code
+            if !ok {
+                return false
+            }
+
+            if src_code != tgt_code {
+                return false
+            }
+        } else if prop_name == "fn" {
+            tgt_func := that_prop
+            # `src_err` should always contain `fn`, based on the
+            # implementation of the runtime.
+            #
+            # TODO Consider whether to convert an error in retrieval to a "dev
+            # err".
+            #
+            # TODO Rename `fn` to `func` to make it easier to access.
+            if src_err["fn"] !== tgt_func {
+                return false
+            }
+        } else {
+            throw "target error may only contain 'code' and/or 'fn'"
+        }
+    }
+
+    return true
 }
 
 objects_match = object_match;

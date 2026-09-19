@@ -14,6 +14,8 @@ use snafu::Snafu;
 use super::fns;
 use crate::eval::builtins::TypeFunctions;
 use crate::eval::error::AssertArgsFailed;
+use crate::eval::error::AssertListFailed;
+use crate::eval::error::AssertObjectFailed;
 use crate::eval::error::AssertStrFailed;
 use crate::eval::error::AssertThisFailed;
 use crate::eval::error::CastFailed;
@@ -78,11 +80,19 @@ pub fn type_functions() -> TypeFunctions {
         ]),
         lists: new_func_map(vec![
             (
+                "len".to_string(),
+                value::new_built_in_func("list_len".to_string(), list_len),
+            ),
+            (
                 "type".to_string(),
                 value::new_built_in_func("list_type".to_string(), any_type),
             ),
         ]),
         objects: new_func_map(vec![
+            (
+                "len".to_string(),
+                value::new_built_in_func("object_len".to_string(), object_len),
+            ),
             (
                 "type".to_string(),
                 value::new_built_in_func("object_type".to_string(), any_type),
@@ -117,6 +127,44 @@ pub fn str_len(this: Option<SourcedValue>, vs: Vec<SourcedValue>)
         .context(AssertStrFailed)?;
 
     let n: i64 = s.len().try_into()
+        .context(CastFailed)?;
+
+    Ok(value::new_int(n))
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub fn list_len(this: Option<SourcedValue>, vs: Vec<SourcedValue>)
+    -> EvalResult<SourcedValue>
+{
+    fns::assert_args("len", 0, &vs)
+        .context(AssertArgsFailed)?;
+
+    let this = fns::assert_this(this)
+        .context(AssertThisFailed)?;
+
+    let list = fns::assert_list(&this)
+        .context(AssertListFailed)?;
+
+    let n: i64 = list.len().try_into()
+        .context(CastFailed)?;
+
+    Ok(value::new_int(n))
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub fn object_len(this: Option<SourcedValue>, vs: Vec<SourcedValue>)
+    -> EvalResult<SourcedValue>
+{
+    fns::assert_args("len", 0, &vs)
+        .context(AssertArgsFailed)?;
+
+    let this = fns::assert_this(this)
+        .context(AssertThisFailed)?;
+
+    let obj = fns::assert_object(&this)
+        .context(AssertObjectFailed)?;
+
+    let n: i64 = obj.len().try_into()
         .context(CastFailed)?;
 
     Ok(value::new_int(n))

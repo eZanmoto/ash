@@ -507,7 +507,9 @@ fn eval_err_to_stacktrace(path: &Path, func: Option<&str>, error: EvalError)
         EvalError::AssertArgsFailed{source} |
         EvalError::AssertThisFailed{source} |
         EvalError::AssertNoThisFailed{source} |
-        EvalError::AssertStrFailed{source} => {
+        EvalError::AssertStrFailed{source} |
+        EvalError::AssertListFailed{source} |
+        EvalError::AssertObjectFailed{source} => {
             eval_err_to_stacktrace(path, func, *source)
         },
 

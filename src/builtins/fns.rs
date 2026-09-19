@@ -10,6 +10,8 @@ use crate::eval::error::Error;
 use crate::eval::error::Result;
 use crate::eval::value;
 use crate::eval::value::Func;
+use crate::eval::value::List;
+use crate::eval::value::Object;
 use crate::eval::value::SourcedValue;
 use crate::eval::value::Value;
 use crate::lock_deref;
@@ -156,6 +158,32 @@ pub fn assert_str(val_name: &str, v: &SourcedValue) -> Result<String> {
     } else {
         // TODO Add type information for the received type.
         let m = "dev err: expected 'string'";
+
+        Err(Error::Dev{msg: m.to_string()})
+    }
+}
+
+pub fn assert_list(v: &SourcedValue) -> Result<List> {
+    if let Value::List{items, ..} = &v.v {
+        let list = lock_deref!(items).clone();
+
+        Ok(list)
+    } else {
+        // TODO Add type information for the received type.
+        let m = "dev err: expected 'list'";
+
+        Err(Error::Dev{msg: m.to_string()})
+    }
+}
+
+pub fn assert_object(v: &SourcedValue) -> Result<Object> {
+    if let Value::Object{props, ..} = &v.v {
+        let obj = lock_deref!(props).clone();
+
+        Ok(obj)
+    } else {
+        // TODO Add type information for the received type.
+        let m = "dev err: expected 'object'";
 
         Err(Error::Dev{msg: m.to_string()})
     }

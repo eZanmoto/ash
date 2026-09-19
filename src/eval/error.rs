@@ -566,6 +566,14 @@ pub enum Error {
         #[snafu(source(from(Error, Box::new)))]
         source: Box<Error>,
     },
+    AssertListFailed{
+        #[snafu(source(from(Error, Box::new)))]
+        source: Box<Error>,
+    },
+    AssertObjectFailed{
+        #[snafu(source(from(Error, Box::new)))]
+        source: Box<Error>,
+    },
 }
 
 pub fn render_type(v: &Value) -> String {
