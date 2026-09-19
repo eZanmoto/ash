@@ -1761,7 +1761,7 @@ pub fn new_error_stack_frame(
     ];
 
     if let Some(f) = func {
-        props.push(("fn".to_string(), f));
+        props.push(("func".to_string(), f));
     }
 
     value::new_object(

@@ -705,7 +705,7 @@ fn render_error_object_stack_frame(
         };
 
     let mut func_name = "<root>".to_string();
-    if let Some(v) = frame.get("fn") {
+    if let Some(v) = frame.get("func") {
         match &v.v {
             // TODO Handle `BuiltinFunc`.
             Value::Func(func_ref) => {

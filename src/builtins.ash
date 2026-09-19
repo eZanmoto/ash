@@ -7,13 +7,13 @@
 # one of its (recursive) `sources` matches `shape`, or `[null, false]`
 # otherwise.
 #
-# An error object matches a shape iff their `code` and `fn` properties are
+# An error object matches a shape iff their `code` and `func` properties are
 # equal. If an object doesn't match the shape then its sources will be checked
 # for equality in a depth-first order. The first object that matches the shape
 # will be returned.
 fn object_match(that) {
     if that::len() == 0 {
-        throw "target error must contain 'code' and/or 'fn'"
+        throw "target error must contain 'code' and/or 'func'"
     }
 
     stack $:= [this]
@@ -46,9 +46,9 @@ fn pop(stack) {
 }
 
 fn err_match(src_err, tgt_err) {
-    [_, ok] := ? src_err["fn"]
+    [_, ok] := ? src_err["func"]
     if !ok {
-        throw "source error doesn't contain 'fn'"
+        throw "source error doesn't contain 'func'"
     }
 
     for [prop_name, that_prop] in tgt_err {
@@ -63,20 +63,18 @@ fn err_match(src_err, tgt_err) {
             if src_code != tgt_code {
                 return false
             }
-        } else if prop_name == "fn" {
+        } else if prop_name == "func" {
             tgt_func := that_prop
-            # `src_err` should always contain `fn`, based on the
+            # `src_err` should always contain `func`, based on the
             # implementation of the runtime.
             #
             # TODO Consider whether to convert an error in retrieval to a "dev
             # err".
-            #
-            # TODO Rename `fn` to `func` to make it easier to access.
-            if src_err["fn"] !== tgt_func {
+            if src_err["func"] !== tgt_func {
                 return false
             }
         } else {
-            throw "target error may only contain 'code' and/or 'fn'"
+            throw "target error may only contain 'code' and/or 'func'"
         }
     }
 

@@ -1,23 +1,23 @@
-================================================== src_err_no_fn
+================================================== src_err_no_func
 exit_code: 103
 --------------------------------------------------
 print({}::match({"code": "my_error"}))
 --------------------------------------------------
 --------------------------------------------------
-error_match/src_err_no_fn.ash:source error doesn't contain 'fn'
+error_match/src_err_no_func.ash:source error doesn't contain 'func'
 Stacktrace:
-  error_match/src_err_no_fn.ash:1:7: in '<root>'
-  error_match/src_err_no_fn.ash:24:12: in 'object_match'
-  error_match/src_err_no_fn.ash:51:15: in 'err_match'
-================================================== match_fn
+  error_match/src_err_no_func.ash:1:7: in '<root>'
+  error_match/src_err_no_func.ash:24:12: in 'object_match'
+  error_match/src_err_no_func.ash:51:15: in 'err_match'
+================================================== match_func
 exit_code: 0
 --------------------------------------------------
-fn f(){}
-print({"fn": f}::match({"fn": f}))
+fn func(){}
+print({func}::match({func}))
 --------------------------------------------------
 [
     {
-        "fn": <function 'f'>,
+        "func": <function 'func'>,
     },
     true,
 ]
@@ -25,8 +25,8 @@ print({"fn": f}::match({"fn": f}))
 ================================================== match_code
 exit_code: 0
 --------------------------------------------------
-fn f(){}
-print({"fn": f}::match({"code": "my_error"}))
+fn func(){}
+print({func}::match({"code": "my_error"}))
 --------------------------------------------------
 [
     <null>,
