@@ -174,7 +174,7 @@ print(err)
         },
         {
             "col": 11,
-            "fn": <function 'f'>,
+            "func": <function 'f'>,
             "line": 2,
         },
     ],
@@ -203,7 +203,7 @@ print(err)
         },
         {
             "col": 11,
-            "fn": <function 'f'>,
+            "func": <function 'f'>,
             "line": 2,
         },
     ],
@@ -233,7 +233,7 @@ print(err)
         },
         {
             "col": 11,
-            "fn": <function 'f'>,
+            "func": <function 'f'>,
             "line": 3,
         },
     ],
