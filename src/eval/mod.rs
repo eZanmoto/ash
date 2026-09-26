@@ -1740,6 +1740,8 @@ pub fn new_runtime_error_object(
 }
 
 pub fn new_error_stack_frame(
+    // TODO Add `file` to the error object, which can be retrieved from an
+    // `EvaluationContext`.
     func: Option<SourcedValue>,
     line: usize,
     col: usize,
